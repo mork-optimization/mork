@@ -17,6 +17,7 @@ import { FormsModule } from '@angular/forms';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatTabsModule } from '@angular/material/tabs';
+import { MatSelectModule } from '@angular/material/select';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatStepperModule } from '@angular/material/stepper';
@@ -72,6 +73,7 @@ import { FilePreviewUtil } from '../../util/file-preview-util';
     MatChipsModule,
     MatTabsModule,
     MatInputModule,
+    MatSelectModule,
     MatFormFieldModule,
     MatStepperModule,
     MatPaginatorModule,
@@ -554,6 +556,12 @@ export class AutoLlmDashboard {
     this.detailTab.set(index);
     this.saveLocation(true);
   }
+  generationAgent(agent: 'CODEX' | 'CLAUDE_CODE'): void {
+    this.store.config.update(config => config ? { ...config, generation: {
+      ...config.generation, agent, executable: agent === 'CODEX' ? 'codex' : 'claude', model: null, reasoningEffort: null
+    }} : config);
+  }
+
   inspectAttemptActivity(number: number, generation: boolean): void {
     this.selectedAttempt.set(number);
     if (generation) this.store.watchGeneration(number);
@@ -939,7 +947,7 @@ export class AutoLlmDashboard {
         throw new Error('Settings must be a JSON object');
       for (const key of [
         'project',
-        'codex',
+        'generation',
         'preparation',
         'tuning',
         'comparison',
@@ -955,7 +963,7 @@ export class AutoLlmDashboard {
         ...current,
         ...parsed,
         project: { ...current.project, ...parsed.project },
-        codex: { ...current.codex, ...parsed.codex },
+        generation: { ...current.generation, ...parsed.generation },
         preparation: { ...current.preparation, ...parsed.preparation },
         tuning: { ...current.tuning, ...parsed.tuning },
         comparison: { ...current.comparison, ...parsed.comparison },

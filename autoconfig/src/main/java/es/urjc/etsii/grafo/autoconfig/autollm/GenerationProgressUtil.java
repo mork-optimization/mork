@@ -6,24 +6,29 @@ import java.time.Instant;
 import java.util.*;
 
 /** Incremental CLI observations. Counters describe visible events, not hidden model iterations. */
-public final class CodexProgressUtil {
+public final class GenerationProgressUtil {
     private static final int MAX_EVENT_BYTES = 8 * 1024 * 1024;
     public static class Progress {
         public long cursor;
         public boolean discarding;
         public String state = "LAUNCHING";
-        public String threadId;
+        public String sessionId;
         public String lastActivityAt;
         public int turns;
         public int commandsStarted;
         public int commandsCompleted;
+        public Set<String> pendingCommands = new HashSet<>();
         public int edits;
         public int messages;
         public Object usage;
     }
-    private CodexProgressUtil() {}
+    private GenerationProgressUtil() {}
     public static synchronized Progress refresh(Path output) {
-        Path snapshot = output.resolve("codex-progress.json"), log = output.resolve("stdout.log");
+        var launch = output.resolve("generation-launch.json");
+        return refresh(output, Files.isRegularFile(launch) && "CLAUDE_CODE".equals(AutoLlmFileUtil.read(launch, Map.class).get("agent")));
+    }
+    static synchronized Progress refresh(Path output, boolean claude) {
+        Path snapshot = output.resolve("generation-progress.json"), log = output.resolve("stdout.log");
         var progress = Files.exists(snapshot) ? AutoLlmFileUtil.read(snapshot, Progress.class) : new Progress();
         if (AutoLlmEvidenceFiles.archived(log) || !Files.isRegularFile(log)) return progress;
         boolean changed = false;
@@ -43,29 +48,8 @@ public final class CodexProgressUtil {
                     var event = AutoLlmFileUtil.JSON.readTree(bytes);
                     String type = event.path("type").asString("");
                     String description = type;
-                    if (type.equals("thread.started")) {
-                        progress.threadId = event.path("thread_id").asString(); progress.state = "SESSION_READY";
-                        AutoLlmFileUtil.write(output.resolve("thread-id.json"), Map.of("threadId", progress.threadId));
-                        AutoLlmFileUtil.write(output.resolve("execution/readiness.json"), Map.of("startedAtMillis", System.currentTimeMillis()));
-                    } else if (type.equals("turn.started")) { progress.turns++; progress.state = "ACTIVE"; }
-                    else if (type.startsWith("item.")) {
-                        progress.state = "ACTIVE";
-                        var item = event.path("item"); String kind = item.path("type").asString("");
-                        description = kind;
-                        if (kind.equals("command_execution")) {
-                            if (type.equals("item.started")) progress.commandsStarted++;
-                            if (type.equals("item.completed")) progress.commandsCompleted++;
-                            description += ": " + item.path("command").asString("") + "\n" + item.path("aggregated_output").asString("");
-                        } else if (kind.equals("agent_message")) {
-                            if (type.equals("item.completed")) progress.messages++;
-                            description = item.path("text").asString("");
-                        } else if (kind.equals("file_change")) {
-                            if (type.equals("item.completed")) progress.edits++;
-                            description += ": " + item.path("changes");
-                        } else description += ": " + item;
-                    } else if (type.equals("turn.completed")) { progress.state = "COMPLETED"; progress.usage = event.get("usage"); }
-                    else if (type.equals("turn.failed") || type.equals("error")) { progress.state = "FAILED"; description = event.toString(); }
-                    else continue;
+                    description = claude ? ClaudeCodeBackend.observe(output, event, progress) : CodexBackend.observe(output, event, progress);
+                    if (description == null) continue;
                     activity(output, type, description, progress);
                 } catch (tools.jackson.core.JacksonException e) { activity(output, "unparsed-event", "Unrecognized event; inspect the raw log.", progress); }
             }

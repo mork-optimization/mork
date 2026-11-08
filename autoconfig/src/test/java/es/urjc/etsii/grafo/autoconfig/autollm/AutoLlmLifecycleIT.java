@@ -69,7 +69,7 @@ class AutoLlmLifecycleIT {
         if (mode.equals("baseline")) buildCommand.add("--fail-replay");
         if (mode.equals("framework")) buildCommand.add("--fail-once-trial");
         var settings = new AutoLlmConfig(new AutoLlmConfig.Project(repo.toString(), "HEAD", buildCommand, "target/project.jar", null), temp.resolve("campaigns").toString(), 2, 1234L, 299,
-                "sota.json", null, "train.index", "comparison.index", new AutoLlmConfig.Codex(cli.toString(), null, null, (mode.startsWith("quota-") || mode.startsWith("capacity-")) ? mode + "-fixture" : archiveFailure ? "missing-archive-fixture" : mode.equals("framework") ? "fixture-model" : "repair-fixture", null, null), new AutoLlmConfig.Preparation(5000L, 5000L, 1, null, null, null, null),
+                "sota.json", null, "train.index", "comparison.index", new AutoLlmConfig.Generation(null, cli.toString(), null, null, (mode.startsWith("quota-") || mode.startsWith("capacity-")) ? mode + "-fixture" : archiveFailure ? "missing-archive-fixture" : mode.equals("framework") ? "fixture-model" : "repair-fixture", null, null), new AutoLlmConfig.Preparation(5000L, 5000L, 1, null, null, null, null),
                 new AutoLlmConfig.Tuning(100, 2L, 20L, false), new AutoLlmConfig.Comparison(2, 20L), new AutoLlmConfig.Execution(2, 50L, 5000L, 5000L, 5000L, 5000L, 5000L, 10000L, "128m", null, null));
         var failures = new java.util.concurrent.atomic.AtomicInteger(mode.equals("transient") ? 2 : mode.equals("persistent") ? 3 : 0);
         var generations = new java.util.concurrent.atomic.AtomicInteger();
@@ -88,12 +88,12 @@ class AutoLlmLifecycleIT {
         };
         var store = new AutoLlmCampaignStore(settings); var instances = new InstanceConfiguration(); instances.setPath(Map.of("default", input.toString()));
         var quotaReleasedSlot = new java.util.concurrent.atomic.AtomicBoolean();
-        var generator = new CodexTaskRunner(runner, new MockEnvironment().withProperty("CODEX_HOME", temp.resolve("codex-home").toString())) {
+        var generator = new GenerationTaskRunner(runner, new MockEnvironment().withProperty("CODEX_HOME", temp.resolve("codex-home").toString())) {
             @Override public Result run(AutoLlmConfig config, Path checkout, Path output, String prompt, String thread, BooleanSupplier cancel) {
                 try { return super.run(config, checkout, output, prompt, thread, cancel); }
-                catch (CodexQuotaUtil.QuotaLimitException quota) {
+                catch (GenerationQuotaUtil.QuotaLimitException quota) {
                     // Keep integration tests immediate; reset-time parsing is exercised separately.
-                    throw new CodexQuotaUtil.QuotaLimitException(quota.getMessage(), Instant.EPOCH);
+                    throw new GenerationQuotaUtil.QuotaLimitException(quota.getMessage(), Instant.EPOCH);
                 }
             }
         };
@@ -152,7 +152,7 @@ class AutoLlmLifecycleIT {
                 assertNull(first.quotaRetryAt); assertNull(first.capacityWait); assertFalse(first.repairPending); assertTrue(quotaReleasedSlot.get());
                 int limited = 0;
                 for (var attempt : first.attempts) if (attempt.stage.generation()) {
-                    assertEquals(first.threadId, attempt.codexEvidence.threadId());
+                    assertEquals(first.sessionId, attempt.generationEvidence.sessionId());
                     if (((attempt.status == AutoLlmCampaign.AttemptStatus.QUOTA_LIMIT || attempt.status == AutoLlmCampaign.AttemptStatus.CAPACITY_LIMIT))) limited++;
                 }
                 assertEquals(mode.endsWith("-repeat") ? 4 : 1, limited);
@@ -187,7 +187,7 @@ class AutoLlmLifecycleIT {
                 assertEquals(AutoLlmFailureUtil.Category.INTEGRITY, campaign.trials.getFirst().problem.category());
                 assertEquals(0, campaign.trials.getFirst().repairTurns);
                 assertEquals("SUCCEEDED", campaign.trials.get(1).status.name());
-                assertEquals("FAILED", campaign.trials.getFirst().attempts.getFirst().codexEvidence.status());
+                assertEquals("FAILED", campaign.trials.getFirst().attempts.getFirst().generationEvidence.status());
                 service.start(campaign.id, true, Set.of());
                 deadline = System.currentTimeMillis() + 10000;
                 while (service.active() != null && System.currentTimeMillis() < deadline) Thread.sleep(20);
@@ -199,13 +199,13 @@ class AutoLlmLifecycleIT {
                 assertEquals("COMPLETED_WITH_FAILURES", campaign.status.name(), campaign.failure); assertNull(campaign.problem);
                 assertEquals(2, campaign.trials.getFirst().infrastructureRetries); assertEquals(1, campaign.trials.getFirst().repairTurns);
                 assertEquals("SUCCEEDED", campaign.trials.get(1).status.name(), campaign.trials.get(1).failure);
-                assertEquals(80L, campaign.codexUsage.tokens().totalTokens()); assertEquals("PARTIAL", campaign.codexUsage.status()); return;
+                assertEquals(80L, campaign.generationUsage.tokens().totalTokens()); assertEquals("PARTIAL", campaign.generationUsage.status()); return;
             }
             assertEquals("COMPLETED_WITH_FAILURES", campaign.status.name(), campaign.failure);
             assertEquals("FAILED", campaign.trials.getFirst().status.name(), campaign.trials.getFirst().failure);
             assertTrue(campaign.trials.getFirst().failure.contains(archiveFailure ? "could not be archived" : "Hung evaluation"));
             var second = campaign.trials.get(1); assertEquals("SUCCEEDED", second.status.name(), second.failure);
-            assertNotEquals(campaign.trials.getFirst().threadId, second.threadId); assertNotEquals(campaign.trials.getFirst().tuningSeed, second.tuningSeed);
+            assertNotEquals(campaign.trials.getFirst().sessionId, second.sessionId); assertNotEquals(campaign.trials.getFirst().tuningSeed, second.tuningSeed);
             assertEquals(campaign.trials.getFirst().comparisonSeed, second.comparisonSeed);
             String sourceInstructions;
             try (var inputStream = getClass().getResourceAsStream("/autollm/source-instructions.txt")) {
@@ -213,8 +213,8 @@ class AutoLlmLifecycleIT {
             }
             for (var trial : campaign.trials) {
                 assertEquals(archiveFailure ? 0 : 1, trial.repairTurns);
-                assertEquals(archiveFailure && trial.number == 1 ? "UNAVAILABLE" : "COMPLETE", trial.codexUsage.status());
-                if (!archiveFailure) assertEquals(40L, trial.codexUsage.tokens().totalTokens());
+                assertEquals(archiveFailure && trial.number == 1 ? "UNAVAILABLE" : "COMPLETE", trial.generationUsage.status());
+                if (!archiveFailure) assertEquals(40L, trial.generationUsage.tokens().totalTokens());
                 for (var generation : trial.attempts) if (generation.stage.generation()) {
                     String prompt = AutoLlmEvidenceFiles.readString(store.directory(campaign.id).resolve(generation.directory).resolve("prompt.txt"));
                     assertTrue(prompt.startsWith(created.prompt));
@@ -222,10 +222,10 @@ class AutoLlmLifecycleIT {
                 }
                 for (var repair : trial.attempts) if ((repair.stage == AutoLlmCampaign.AttemptStage.REPAIR)) {
                     Map<?,?> owner = AutoLlmFileUtil.read(store.directory(campaign.id).resolve(repair.directory).resolve("owner.json"), Map.class);
-                    List<?> command = assertInstanceOf(List.class, owner.get("command")); assertEquals(trial.threadId, command.get(command.indexOf("resume") + 1));
-                    assertEquals(1, repair.codexEvidence.conversations().size());
-                    assertEquals(20L, repair.codexEvidence.usage().tokens().totalTokens());
-                    assertEquals(7L, AutoLlmEvidenceFiles.readString(store.directory(campaign.id).resolve(repair.directory).resolve(repair.codexEvidence.conversations().getFirst().path())).lines().count());
+                    List<?> command = assertInstanceOf(List.class, owner.get("command")); assertEquals(trial.sessionId, command.get(command.indexOf("resume") + 1));
+                    assertEquals(1, repair.generationEvidence.conversations().size());
+                    assertEquals(20L, repair.generationEvidence.usage().tokens().totalTokens());
+                    assertEquals(7L, AutoLlmEvidenceFiles.readString(store.directory(campaign.id).resolve(repair.directory).resolve(repair.generationEvidence.conversations().getFirst().path())).lines().count());
                     assertTrue(AutoLlmEvidenceFiles.readString(store.directory(campaign.id).resolve(repair.directory).resolve("prompt.txt")).contains("Command failed"));
                 }
             }
@@ -264,8 +264,8 @@ class AutoLlmLifecycleIT {
                 assertEquals(entry.getValue(), Files.readString(restored.resolve(entry.getKey())));
             }
             assertTrue(Files.exists(root.resolve("reports/llm-usage.json")));
-            assertEquals(archiveFailure ? 20L : 80L, campaign.codexUsage.tokens().totalTokens());
-            assertEquals(archiveFailure ? "PARTIAL" : "COMPLETE", campaign.codexUsage.status());
+            assertEquals(archiveFailure ? 20L : 80L, campaign.generationUsage.tokens().totalTokens());
+            assertEquals(archiveFailure ? "PARTIAL" : "COMPLETE", campaign.generationUsage.status());
             assertFalse(Files.exists(repo.resolve("src/main/java/FixtureUtil.java")));
             assertThrows(IllegalStateException.class, () -> service.start(campaign.id, true, Set.of()));
         } finally { service.close(); }

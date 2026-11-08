@@ -48,12 +48,12 @@ class AutoLlmCampaignIT {
             var client = HttpClient.newHttpClient();
             // The 32-worker fixture can oversubscribe a development host; allow its first objective before scoring.
             var settings = new AutoLlmConfig(new AutoLlmConfig.Project(repo.toString(), "HEAD", List.of(java, "-cp", cp, AutoLlmFixture.class.getName(), "build"), "target/project.jar", List.of("--whitelist=ACITestWhitelist", "--solver.benchmark=false")), workspace.toString(), remote ? 2 : 1, 1234L, 299,
-                    "sota.json", null, "training.index", "training.index", new AutoLlmConfig.Codex(codex.toString(), null, null, "fixture-model", null, null), new AutoLlmConfig.Preparation(30_000L, 30_000L, 0, null, null, null, null), new AutoLlmConfig.Tuning(300, remote ? 1000L : 50L, remote ? 100L : 50L, false), new AutoLlmConfig.Comparison(2, 50L), new AutoLlmConfig.Execution(remote ? 32 : 1, 5000L, remote ? 600_000L : 30_000L, 30_000L, 30_000L, 30_000L, remote ? 300_000L : 30_000L, 180_000L, "256m", remote ? AutoLlmConfig.Target.SSH : AutoLlmConfig.Target.LOCAL, ssh == null ? null : ssh.ssh));
+                    "sota.json", null, "training.index", "training.index", new AutoLlmConfig.Generation(null, codex.toString(), null, null, "fixture-model", null, null), new AutoLlmConfig.Preparation(30_000L, 30_000L, 0, null, null, null, null), new AutoLlmConfig.Tuning(300, remote ? 1000L : 50L, remote ? 100L : 50L, false), new AutoLlmConfig.Comparison(2, 50L), new AutoLlmConfig.Execution(remote ? 32 : 1, 5000L, remote ? 600_000L : 30_000L, 30_000L, 30_000L, 30_000L, remote ? 300_000L : 30_000L, 180_000L, "256m", remote ? AutoLlmConfig.Target.SSH : AutoLlmConfig.Target.LOCAL, ssh == null ? null : ssh.ssh));
             if (remote) {
                 var firstServer = ssh.ssh.screeningServer(); var next = second.ssh.screeningServer();
                 var pool = new AutoLlmConfig.Ssh("server", ssh.ssh.runnerArtifact(), List.of(firstServer,
                         new AutoLlmConfig.Server("second", next.host(), next.workspace(), next.javaExecutable(), next.environment(), next.configFile(), 8, "256m")), null);
-                settings = new AutoLlmConfig(settings.project(), settings.workspace(), settings.trials(), settings.seed(), settings.maxParameters(), settings.sotaFile(), settings.initialConfigurationsFile(), settings.trainingPath(), settings.comparisonPath(), settings.codex(), settings.preparation(), settings.tuning(), settings.comparison(),
+                settings = new AutoLlmConfig(settings.project(), settings.workspace(), settings.trials(), settings.seed(), settings.maxParameters(), settings.sotaFile(), settings.initialConfigurationsFile(), settings.trainingPath(), settings.comparisonPath(), settings.generation(), settings.preparation(), settings.tuning(), settings.comparison(),
                         new AutoLlmConfig.Execution(32, 5000L, 600_000L, 30_000L, 30_000L, 30_000L, 300_000L, 180_000L, "256m", AutoLlmConfig.Target.SSH, pool));
             }
             var capabilities = get(client, base + "/capabilities");
@@ -109,7 +109,7 @@ class AutoLlmCampaignIT {
             Files.writeString(repo.resolve("src/main/java/Original.java"), "public class Original { public static final int REVISION = 2; }\n");
             git(repo, "add", "src/main/java/Original.java"); git(repo, "-c", "user.name=Test", "-c", "user.email=test@example.test", "commit", "-m", "new baseline using saved datasets");
             var arguments = new ArrayList<>(settings.project().runArguments()); arguments.add("--instances.path.reference=" + originalReference);
-            settings = new AutoLlmConfig(new AutoLlmConfig.Project(settings.project().repository(), settings.project().ref(), settings.project().buildCommand(), settings.project().artifact(), arguments), settings.workspace(), settings.trials(), settings.seed(), settings.maxParameters(), settings.sotaFile(), settings.initialConfigurationsFile(), settings.trainingPath(), settings.comparisonPath(), settings.codex(), settings.preparation(), settings.tuning(), settings.comparison(), settings.execution());
+            settings = new AutoLlmConfig(new AutoLlmConfig.Project(settings.project().repository(), settings.project().ref(), settings.project().buildCommand(), settings.project().artifact(), arguments), settings.workspace(), settings.trials(), settings.seed(), settings.maxParameters(), settings.sotaFile(), settings.initialConfigurationsFile(), settings.trainingPath(), settings.comparisonPath(), settings.generation(), settings.preparation(), settings.tuning(), settings.comparison(), settings.execution());
             String targetId = remote ? "server" : "local";
             var created = request(client, base + "/campaigns", AutoLlmFileUtil.JSON.writeValueAsString(settings));
             String id = created.path("id").stringValue();
@@ -191,9 +191,9 @@ class AutoLlmCampaignIT {
             assertEquals(50, AutoLlmFileUtil.JSON.readTree(read(root.resolve(trial.outputDirectory(AutoLlmCampaign.Stage.COMPARISON)).resolve("execution/time-limits.json"))).properties().iterator().next().getValue().longValue());
             assertFalse(Files.exists(repo.resolve("src/main/java/es/urjc/etsii/grafo/autoconfigtests/components/FasterInvertedConstructiveNew.java")));
             request(client, base + "/campaigns/" + id + "/report", "{}"); var regenerated = get(client, base + "/campaigns/" + id); assertTrue(regenerated.path("reportFailure").isNull());
-            assertEquals("COMPLETE", regenerated.path("codexUsage").path("status").stringValue());
-            assertEquals(remote ? 40 : 20, regenerated.path("codexUsage").path("tokens").path("totalTokens").longValue());
-            var evidence = trial.attempts.getFirst().codexEvidence;
+            assertEquals("COMPLETE", regenerated.path("generationUsage").path("status").stringValue());
+            assertEquals(remote ? 40 : 20, regenerated.path("generationUsage").path("tokens").path("totalTokens").longValue());
+            var evidence = trial.attempts.getFirst().generationEvidence;
             var progress = get(client, base + "/campaigns/" + id + "/trials/1/progress");
             assertEquals("SUCCEEDED", progress.path("status").asString());
             var activity = get(client, base + "/campaigns/" + id + "/trials/1/activity?attempt=1&cursor=0");

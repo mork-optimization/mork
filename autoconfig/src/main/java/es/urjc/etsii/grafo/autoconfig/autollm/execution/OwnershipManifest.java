@@ -176,6 +176,10 @@ public final class OwnershipManifest {
             String line = lines.readLine();
             if (line == null || line.length() > 65536) throw new IOException("Missing session identity");
             var event = AutoLlmFileUtil.JSON.readTree(line);
+            if (!event.path("type").asString("").equals("session_meta")) {
+                es.urjc.etsii.grafo.autoconfig.autollm.ClaudeCodeBackend.verifyTranscript(path, id, cwd);
+                return;
+            }
             if (!event.path("type").asString().equals("session_meta") || !id.equals(event.path("payload").path("id").asString())
                     || !cwd.equals(event.path("payload").path("cwd").asString())) throw new IOException("Native session ownership is ambiguous: " + path);
         }

@@ -1,4 +1,5 @@
 import { ObjectiveMode } from './Events';
+import { SolutionViewResult } from '../../extension-api/public-api';
 
 export type ExecutionPhase =
   | 'IDLE'
@@ -10,7 +11,7 @@ export type ExecutionPhase =
   | 'COMPLETED_WITH_ERRORS'
   | 'FAILED'
   | 'CANCELLED';
-export type WorkState = 'PENDING' | 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED';
+export type WorkState = SolutionViewResult['state'];
 export interface Counts {
   readonly planned: number;
   readonly pending: number;
@@ -75,20 +76,9 @@ export interface AlgorithmSummary {
   readonly timeToBestMillis: Statistics;
   readonly bestResultId: string | null;
 }
-export interface ResultView {
-  readonly resultId: string;
+export interface ResultView extends SolutionViewResult {
   readonly instanceId: string;
-  readonly experimentName: string;
-  readonly instanceName: string;
-  readonly algorithmName: string;
   readonly ordinal: number;
-  readonly iteration: string;
-  readonly seed: number;
-  readonly state: WorkState;
-  readonly objectives: Readonly<Record<string, number>>;
-  readonly properties: Readonly<Record<string, unknown>>;
-  readonly executionTime: number | null;
-  readonly timeToBest: number | null;
   readonly startedAt: number | null;
   readonly endedAt: number | null;
 }

@@ -35,7 +35,7 @@ public final class AutoLlmNormalization {
         blanks(tree);
         var c = AutoLlmFileUtil.JSON.treeToValue(tree, AutoLlmConfig.class);
         Path cwd = Path.of("").toAbsolutePath(), repo = localPath(Path.of(c.project().repository()));
-        var e = c.execution(); var p = c.preparation(); var x = c.codex();
+        var e = c.execution(); var p = c.preparation(); var x = c.generation();
         AutoLlmConfig.Ssh ssh = null;
         if (e.ssh() != null) {
             var servers = new ArrayList<AutoLlmConfig.Server>();
@@ -47,9 +47,9 @@ public final class AutoLlmNormalization {
         return new AutoLlmConfig(new AutoLlmConfig.Project(repo.toString(), c.project().ref(), c.project().buildCommand(), c.project().artifact(), c.project().runArguments()),
                 path(cwd, c.workspace()), c.trials(), c.seed(), c.maxParameters(), path(repo, c.sotaFile()), path(repo, c.initialConfigurationsFile()),
                 path(repo, c.trainingPath()), path(repo, c.comparisonPath()),
-                new AutoLlmConfig.Codex(x.executable(), path(repo, x.promptFile()), x.prompt(), x.model(), x.reasoningEffort(), x.maxConcurrentSessions()),
+                new AutoLlmConfig.Generation(x.agent(), x.executable(), path(repo, x.promptFile()), x.prompt(), x.model(), x.reasoningEffort(), x.maxConcurrentSessions()),
                 new AutoLlmConfig.Preparation(p.probeDurationMillis(), p.pilotDurationMillis(), p.maxRepairs(), p.localBuilds(), p.readyQueueSize(), p.localWorkers(), heap(p.localHeap())),
-                c.tuning(), c.comparison(), new AutoLlmConfig.Execution(e.workers(), e.watchdogGraceMillis(), e.codexTimeoutMillis(), e.buildTimeoutMillis(), e.startupTimeoutMillis(),
+                c.tuning(), c.comparison(), new AutoLlmConfig.Execution(e.workers(), e.watchdogGraceMillis(), e.generationTimeoutMillis(), e.buildTimeoutMillis(), e.startupTimeoutMillis(),
                 e.searchSpaceTimeoutMillis(), e.phaseTimeoutMillis(), e.stageTimeoutMillis(), heap(e.heap()), e.target(), ssh));
     }
     private static void blanks(JsonNode node) {

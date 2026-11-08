@@ -3,22 +3,14 @@ package es.urjc.etsii.grafo.autoconfig.autollm;
 import java.io.*;
 import java.nio.file.*;
 import java.util.*;
+import static es.urjc.etsii.grafo.autoconfig.autollm.GenerationEvidence.*;
 
 /** Archives only the selected native Codex session and its explicitly linked descendants. */
 public final class CodexEvidenceUtil {
     private CodexEvidenceUtil() {}
 
-    public record Tokens(Long inputTokens, Long cachedInputTokens, Long cacheWriteInputTokens,
-                         Long outputTokens, Long reasoningOutputTokens, Long totalTokens) {
-        public boolean complete() { return inputTokens != null && cachedInputTokens != null && cacheWriteInputTokens != null && outputTokens != null && reasoningOutputTokens != null && totalTokens != null; }
-    }
-    public record Summary(String status, Tokens tokens, int attempts, int completeAttempts, int partialAttempts, int unavailableAttempts) {}
-    public record Conversation(String threadId, String parentThreadId, String path, String sha256, String cliVersion, List<String> models) {}
-    public record Evidence(String status, String threadId, List<Conversation> conversations, Summary usage, String failure) {}
-    public record Entry(String key, String threadId, String source, Tokens tokens) {}
-    public record Usage(Summary summary, List<Entry> entries, List<Conversation> conversations, List<Map<String,Object>> cliReportedUsage, List<String> notes) {}
     public record Before(String codexHome, boolean known, Map<String, Set<String>> responseIds, Map<String,Tokens> counters) {}
-    public record Cli(String threadId, boolean completed, List<Map<String,Object>> usage) {}
+    public record Cli(String sessionId, boolean completed, List<Map<String,Object>> usage) {}
     private record Session(Path path, String id, String parent, String cwd, String version) {}
     private static class Parsed {
         final Map<String, Tokens> responses = new LinkedHashMap<>();
@@ -27,21 +19,17 @@ public final class CodexEvidenceUtil {
         Tokens counter;
         boolean counterInvalid;
     }
-    public static class ArchiveException extends IllegalStateException {
-        public ArchiveException(String message, Throwable cause) { super(message, cause); }
-    }
-
-    public static void begin(Path home, Path checkout, Path output, String threadId) {
+    public static void begin(Path home, Path checkout, Path output, String sessionId) {
         var responses = new LinkedHashMap<String, Set<String>>();
         var counters = new LinkedHashMap<String, Tokens>();
         try {
-            if (threadId != null) for (var session : sessions(home, checkout, threadId)) {
+            if (sessionId != null) for (var session : sessions(home, checkout, sessionId)) {
                 var parsed = parse(session.path());
                 responses.put(session.id(), parsed.responses.keySet());
                 if (parsed.counter != null && !parsed.counterInvalid) counters.put(session.id(), parsed.counter);
             }
             AutoLlmFileUtil.write(output.resolve("evidence-before.json"), new Before(home.toAbsolutePath().normalize().toString(), true, responses, counters));
-        } catch (RuntimeException | IOException e) { throw failure(output, threadId, List.of(), "Cannot establish Codex conversation archive baseline", e); }
+        } catch (RuntimeException | IOException e) { throw failure(output, sessionId, List.of(), "Cannot establish Codex conversation archive baseline", e); }
     }
 
     /** Called after the owned process tree stops, including during interrupted-attempt recovery. */
@@ -61,7 +49,7 @@ public final class CodexEvidenceUtil {
         if (Files.isRegularFile(marker)) {
             try {
                 var evidence = AutoLlmFileUtil.read(marker, Evidence.class);
-                if (expectedThread != null && !expectedThread.equals(evidence.threadId())) throw new ArchiveException("Archived Codex thread differs from the requested thread", null);
+                if (expectedThread != null && !expectedThread.equals(evidence.sessionId())) throw new ArchiveException("Archived Codex thread differs from the requested thread", null);
                 for (var conversation : evidence.conversations()) {
                     if (!conversation.sha256().equals(AutoLlmFileUtil.hash(AutoLlmFileUtil.inside(output, conversation.path())))) throw new ArchiveException("Archived Codex conversation changed", null);
                 }
@@ -73,18 +61,18 @@ public final class CodexEvidenceUtil {
         try {
             Files.createDirectories(output);
             var reported = cli(output.resolve("stdout.log")); cli.addAll(reported.usage());
-            if (reported.threadId() != null) {
-                if (expectedThread != null && !expectedThread.equals(reported.threadId())) throw new IllegalStateException("Codex resumed a different conversation");
-                thread = reported.threadId();
+            if (reported.sessionId() != null) {
+                if (expectedThread != null && !expectedThread.equals(reported.sessionId())) throw new IllegalStateException("Codex resumed a different conversation");
+                thread = reported.sessionId();
             }
             // A CLI failure before creating a conversation has no native conversation to archive.
             if (thread == null) {
-                var usage = new Usage(summary(List.of(), false), List.of(), List.of(), cli, List.of("Codex did not report a conversation ID"));
+                var usage = new Usage(GenerationEvidence.summary(List.of(), false), List.of(), List.of(), cli, List.of("Codex did not report a conversation ID"));
                 AutoLlmFileUtil.write(output.resolve("usage.json"), usage);
                 var evidence = new Evidence("UNAVAILABLE", null, List.of(), usage.summary(), null);
                 AutoLlmFileUtil.write(marker, evidence); return evidence;
             }
-            Files.writeString(output.resolve("thread-id.txt"), thread);
+            Files.writeString(output.resolve("session-id.txt"), thread);
             var before = Files.isRegularFile(output.resolve("evidence-before.json")) ? AutoLlmFileUtil.read(output.resolve("evidence-before.json"), Before.class)
                     : new Before(home.toString(), false, Map.of(), Map.of());
             var conversations = new ArrayList<Conversation>();
@@ -131,7 +119,7 @@ public final class CodexEvidenceUtil {
                     else { complete = false; notes.add("Non-monotonic counters: " + session.id()); }
                 } else if (!newResponses && parsed.responses.isEmpty()) { complete = false; notes.add("Native usage is unavailable: " + session.id()); }
             }
-            var usage = new Usage(summary(entries.values(), complete), List.copyOf(entries.values()), conversations, cli, notes);
+            var usage = new Usage(GenerationEvidence.summary(entries.values(), complete), List.copyOf(entries.values()), conversations, cli, notes);
             AutoLlmFileUtil.write(output.resolve("usage.json"), usage);
             var evidence = new Evidence("ARCHIVED", thread, conversations, usage.summary(), null);
             AutoLlmFileUtil.write(marker, evidence); return evidence;
@@ -163,15 +151,15 @@ public final class CodexEvidenceUtil {
     private static ArchiveException failure(Path output, String thread, List<Map<String,Object>> cli, String message, Throwable cause) {
         var error = new ArchiveException(message, cause);
         try {
-            var usage = new Usage(summary(List.of(), false), List.of(), List.of(), cli, List.of(message));
+            var usage = new Usage(GenerationEvidence.summary(List.of(), false), List.of(), List.of(), cli, List.of(message));
             AutoLlmFileUtil.write(output.resolve("usage.json"), usage);
             AutoLlmFileUtil.write(output.resolve("evidence.json"), new Evidence("FAILED", thread, List.of(), usage.summary(), message));
         } catch (RuntimeException e) { error.addSuppressed(e); }
         return error;
     }
 
-    private static List<Session> sessions(Path home, Path checkout, String threadId) throws IOException {
-        if (!UUID.fromString(threadId).toString().equalsIgnoreCase(threadId)) throw new IllegalStateException("Invalid Codex thread ID");
+    private static List<Session> sessions(Path home, Path checkout, String sessionId) throws IOException {
+        if (!UUID.fromString(sessionId).toString().equalsIgnoreCase(sessionId)) throw new IllegalStateException("Invalid Codex thread ID");
         var all = new LinkedHashMap<String,Session>();
         var duplicates = new HashSet<String>();
         for (String directory : List.of("sessions", "archived_sessions")) {
@@ -189,10 +177,10 @@ public final class CodexEvidenceUtil {
                 }
             }
         }
-        var main = all.get(threadId);
-        if (main == null) throw new IllegalStateException("Native JSONL session not found for exact thread " + threadId);
+        var main = all.get(sessionId);
+        if (main == null) throw new IllegalStateException("Native JSONL session not found for exact thread " + sessionId);
         if (main.cwd() == null || !sameDirectory(Path.of(main.cwd()), checkout)) throw new IllegalStateException("Codex session workspace does not match the trial");
-        var selected = new LinkedHashMap<String, Session>(); selected.put(threadId, main);
+        var selected = new LinkedHashMap<String, Session>(); selected.put(sessionId, main);
         boolean added;
         do {
             added = false;
@@ -240,7 +228,7 @@ public final class CodexEvidenceUtil {
     }
     private static String parent(Object source) {
         if (source instanceof Map<?,?> map) {
-            for (String key : List.of("parent_thread_id", "parentThreadId")) if (map.get(key) instanceof String id) return id;
+            for (String key : List.of("parent_thread_id", "parentSessionId")) if (map.get(key) instanceof String id) return id;
             for (var value : map.values()) { String id = parent(value); if (id != null) return id; }
         }
         return null;
@@ -291,49 +279,5 @@ public final class CodexEvidenceUtil {
             else { if (end.get(i) < start.get(i)) return null; result.add(end.get(i) - start.get(i)); }
         }
         return from(result);
-    }
-    private static Tokens total(Collection<Entry> entries) {
-        var sums = new ArrayList<Long>(Arrays.asList(null,null,null,null,null,null));
-        for (var entry : entries) {
-            var values = fields(entry.tokens());
-            for (int i = 0; i < values.size(); i++) if (values.get(i) != null) sums.set(i, Math.addExact(sums.get(i) == null ? 0L : sums.get(i), values.get(i)));
-        }
-        return from(sums);
-    }
-    private static Summary summary(Collection<Entry> entries, boolean complete) {
-        for (var entry : entries) complete &= entry.tokens().complete();
-        String status = entries.isEmpty() ? "UNAVAILABLE" : complete ? "COMPLETE" : "PARTIAL";
-        return new Summary(status, total(entries), 1, status.equals("COMPLETE") ? 1 : 0, status.equals("PARTIAL") ? 1 : 0, status.equals("UNAVAILABLE") ? 1 : 0);
-    }
-
-    /** Rebuilds summaries from immutable attempt artifacts, never from the live Codex cache. */
-    public static void report(AutoLlmCampaign campaign, Path root) {
-        var pooled = new LinkedHashMap<String,Entry>();
-        var trials = new ArrayList<Map<String,Object>>();
-        int complete = 0, partial = 0, unavailable = 0;
-        for (var trial : campaign.trials) {
-            var entries = new LinkedHashMap<String,Entry>();
-            int tc = 0, tp = 0, tu = 0;
-            var attempts = new ArrayList<Map<String,Object>>();
-            for (var attempt : trial.attempts) {
-                if (!attempt.stage.generation()) continue;
-                Path directory = root.resolve(attempt.directory);
-                if (Files.isRegularFile(directory.resolve("evidence.json"))) attempt.codexEvidence = AutoLlmFileUtil.read(directory.resolve("evidence.json"), Evidence.class);
-                Usage usage = Files.isRegularFile(directory.resolve("usage.json")) ? AutoLlmFileUtil.read(directory.resolve("usage.json"), Usage.class) : new Usage(summary(List.of(), false), List.of(), List.of(), List.of(), List.of("Legacy or unfinished attempt has no usage artifact"));
-                switch (usage.summary().status()) { case "COMPLETE" -> tc++; case "PARTIAL" -> tp++; default -> tu++; }
-                for (var entry : usage.entries()) { entries.putIfAbsent(entry.key(), entry); pooled.putIfAbsent(entry.key(), entry); }
-                attempts.add(Map.of("attempt", attempt.number, "stage", attempt.stage, "status", attempt.status, "directory", attempt.directory, "usage", usage.summary()));
-            }
-            trial.codexUsage = aggregate(entries.values(), tc, tp, tu);
-            AutoLlmFileUtil.write(root.resolve(trial.directory == null ? "trials/%03d".formatted(trial.number) : trial.directory).resolve("llm-usage.json"), Map.of("trial", trial.number, "summary", trial.codexUsage, "attempts", attempts));
-            trials.add(Map.of("trial", trial.number, "status", trial.status, "summary", trial.codexUsage, "attempts", attempts));
-            complete += tc; partial += tp; unavailable += tu;
-        }
-        campaign.codexUsage = aggregate(pooled.values(), complete, partial, unavailable);
-        AutoLlmFileUtil.write(root.resolve("reports/llm-usage.json"), Map.of("campaignId", campaign.id, "summary", campaign.codexUsage, "trials", trials));
-    }
-    static Summary aggregate(Collection<Entry> entries, int complete, int partial, int unavailable) {
-        int attempts = complete + partial + unavailable;
-        return new Summary(attempts == 0 ? "NOT_STARTED" : entries.isEmpty() ? "UNAVAILABLE" : partial + unavailable == 0 ? "COMPLETE" : "PARTIAL", total(entries), attempts, complete, partial, unavailable);
     }
 }

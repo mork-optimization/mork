@@ -8,8 +8,8 @@ import java.util.Locale;
 import java.util.function.DoubleSupplier;
 
 /** Temporary model availability is independent of quota, component repairs and transport retries. */
-public final class CodexCapacityUtil {
-    private CodexCapacityUtil() {}
+public final class GenerationCapacityUtil {
+    private GenerationCapacityUtil() {}
     public record Wait(String firstFailureAt, String deadline, String nextRetryAt, int retries, String diagnostic) {}
     public static final class CapacityException extends IllegalStateException {
         public CapacityException(String message) { super(message); }

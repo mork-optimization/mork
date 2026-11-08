@@ -28,13 +28,13 @@ class AutoLlmReportChartsTest {
         for (var attempt : attempts) saved.attempts.add(attempt.saved());
         return new AutoLlmPortableReport.Trial(saved, elapsed, 0, 0, List.of(), List.of(attempts), List.of(), null, null, List.of(), "Not compared", List.of(), List.of());
     }
-    private static AutoLlmPortableReport.Attempt usage(AutoLlmPortableReport.Attempt attempt, String status, CodexEvidenceUtil.Entry... entries) {
-        var summary = CodexEvidenceUtil.aggregate(List.of(entries), status.equals("COMPLETE") ? 1 : 0, status.equals("PARTIAL") ? 1 : 0, status.equals("UNAVAILABLE") ? 1 : 0);
-        var usage = new CodexEvidenceUtil.Usage(summary, List.of(entries), List.of(), List.of(), List.of());
+    private static AutoLlmPortableReport.Attempt usage(AutoLlmPortableReport.Attempt attempt, String status, GenerationEvidence.Entry... entries) {
+        var summary = GenerationEvidence.aggregate(List.of(entries), status.equals("COMPLETE") ? 1 : 0, status.equals("PARTIAL") ? 1 : 0, status.equals("UNAVAILABLE") ? 1 : 0);
+        var usage = new GenerationEvidence.Usage(summary, List.of(entries), List.of(), List.of(), List.of());
         return new AutoLlmPortableReport.Attempt(attempt.saved(), attempt.millis(), List.of(), null, AutoLlmFileUtil.JSON.valueToTree(usage), null);
     }
-    private static CodexEvidenceUtil.Entry entry(String key, long input, long output) {
-        return new CodexEvidenceUtil.Entry(key, "thread", "fixture", new CodexEvidenceUtil.Tokens(input, input / 2, 0L, output, output / 2, input + output));
+    private static GenerationEvidence.Entry entry(String key, long input, long output) {
+        return new GenerationEvidence.Entry(key, "thread", "fixture", new GenerationEvidence.Tokens(input, input / 2, 0L, output, output / 2, input + output));
     }
 
     @Test void nestedAttemptsUseSeparateLanesAndGapsUseTheUnionOfIntervals() {
@@ -78,7 +78,7 @@ class AutoLlmReportChartsTest {
         assertEquals("UNAVAILABLE", missing.usage().status()); assertNull(missing.usage().tokens().totalTokens()); assertEquals(1, missing.unknownDurations());
     }
     @Test void partialCountersAndCorruptUsageRemainExplicitlyIncomplete() {
-        var partial = new CodexEvidenceUtil.Entry("partial", "thread", "fixture", new CodexEvidenceUtil.Tokens(10L, null, null, null, null, null));
+        var partial = new GenerationEvidence.Entry("partial", "thread", "fixture", new GenerationEvidence.Tokens(10L, null, null, null, null, null));
         var a = usage(attempt(1, AutoLlmCampaign.AttemptStage.GENERATION, 0, 100L), "PARTIAL", partial);
         var b = new AutoLlmPortableReport.Attempt(attempt(2, AutoLlmCampaign.AttemptStage.GENERATION, 200, 100L).saved(), 100L, List.of(), null, AutoLlmFileUtil.JSON.valueToTree("corrupt"), null);
         var group = AutoLlmReportMetrics.usageStages(trial(1, 300L, a, b)).getFirst();
@@ -102,7 +102,7 @@ class AutoLlmReportChartsTest {
         var rows = new ArrayList<AutoLlmPortableReport.Trial>();
         for (int n = 1; n <= 27; n++) {
             var row = trial(n, (long)n * 1000, attempt(1, AutoLlmCampaign.AttemptStage.GENERATION, n * 10000L, n * 1000L));
-            row.saved().codexUsage = CodexEvidenceUtil.aggregate(List.of(entry("trial-" + n, n * 100, n * 20)), 1, 0, 0); rows.add(row);
+            row.saved().generationUsage = GenerationEvidence.aggregate(List.of(entry("trial-" + n, n * 100, n * 20)), 1, 0, 0); rows.add(row);
         }
         var out = new StringBuilder(); AutoLlmReportCharts.timelines(out, rows); AutoLlmReportCharts.tokens(out, rows); AutoLlmReportCharts.performance(out, rows);
         String html = out.toString();

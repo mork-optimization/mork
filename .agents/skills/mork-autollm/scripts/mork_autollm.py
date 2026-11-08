@@ -19,7 +19,7 @@ from urllib.parse import quote, urlencode
 from urllib.request import Request, urlopen
 import zipfile
 
-FEATURES = {"SSH", "SCREENING_JOBS", "CODEX_PROGRESS", "BYTE_LOG_CURSORS", "STRUCTURED_FAILURES", "SSH_SERVER_POOL", "DYNAMIC_TARGETS", "ASYNC_TARGET_PREFLIGHT", "COMPACT_OBSERVATIONS", "CAMPAIGN_APPROVAL", "REMOTE_INSPECTION", "CANONICAL_CONFIG", "WORKSPACE_LOCKS", "SCOPED_CLEANUP"}
+FEATURES = {"SSH", "SCREENING_JOBS", "GENERATION_PROGRESS", "BYTE_LOG_CURSORS", "STRUCTURED_FAILURES", "SSH_SERVER_POOL", "DYNAMIC_TARGETS", "ASYNC_TARGET_PREFLIGHT", "COMPACT_OBSERVATIONS", "CAMPAIGN_APPROVAL", "REMOTE_INSPECTION", "CANONICAL_CONFIG", "WORKSPACE_LOCKS", "SCOPED_CLEANUP"}
 
 
 def request(base, path, body=None, timeout=30, method=None, maximum_bytes=2_000_000, output=None):
@@ -112,7 +112,7 @@ def capabilities(base, workspace=None, jar=None, cwd=None):
 
 
 def check_capabilities(info, workspace=None, jar=None, cwd=None):
-    if info.get("mode") != "AUTOLLM" or info.get("apiVersion") != 8 or info.get("checkpointVersion") != 8 or info.get("runnerProtocol") != 8 or not FEATURES.issubset(info.get("features", [])):
+    if info.get("mode") != "AUTOLLM" or info.get("apiVersion") != 8 or info.get("checkpointVersion") != 9 or info.get("runnerProtocol") != 8 or not FEATURES.issubset(info.get("features", [])):
         raise RuntimeError("Backend lacks required AutoLLM capabilities; use the matching rebuilt executable")
     if workspace and Path(info["workspace"]).resolve() != Path(workspace).resolve():
         raise RuntimeError("Backend workspace does not match")
@@ -194,8 +194,12 @@ def backend(args):
 
 def configuration(args, base):
     value = request(base, "/defaults")
-    if args.overrides:
-        value = merge(value, json.loads(Path(args.overrides).read_text()))
+    overrides = json.loads(Path(args.overrides).read_text()) if args.overrides else {}
+    agent = overrides.get("generation", {}).get("agent") or args.agent
+    if agent:
+        value["generation"]["agent"] = agent
+        value["generation"]["executable"] = "claude" if agent == "CLAUDE_CODE" else "codex"
+    value = merge(value, overrides)
     value = clean(value)
     if Path(value["workspace"]).resolve() != Path(args.workspace).resolve():
         raise RuntimeError("Configuration workspace differs from the connected backend")
@@ -741,7 +745,7 @@ def diagnose(args, base):
     output = Path(args.output).resolve(); output.parent.mkdir(parents=True, exist_ok=True)
     total, included, evidence, log_tails, omitted = 0, 0, 0, 0, 0
     errors = {}
-    evidence_names = {"build-diagnostics.json", "failure.json", "dependency-differences.json", "dependencies.json", "probes.json", "check.json", "remote-status.json", "remote-job.json", "codex-progress.json", "terminal.json"}
+    evidence_names = {"build-diagnostics.json", "failure.json", "dependency-differences.json", "dependencies.json", "probes.json", "check.json", "remote-status.json", "remote-job.json", "generation-progress.json", "terminal.json"}
     with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as archive:
         def save(name, data):
             nonlocal total
@@ -1006,6 +1010,7 @@ def main(argv=None):
     start.add_argument("--timeout", type=float, default=120)
     config = commands.add_parser("config", help="Merge defaults and JSON overrides; omit optional nulls")
     config.add_argument("--overrides")
+    config.add_argument("--agent", choices=("CODEX", "CLAUDE_CODE"), help="Hosting agent for a new configuration; explicit override configuration takes precedence")
     config.add_argument("--output", required=True)
     config.add_argument("--spring", action="store_true", help="Write JSON-compatible Spring YAML")
     state = commands.add_parser("status")

@@ -20,7 +20,7 @@ import {
   AutoLlmCampaign,
   AutoLlmConfig,
   AutoLlmTrial,
-  CodexProgress,
+  GenerationProgress,
   ScreeningJob,
   ScreeningReview,
 } from '../../model/autollm';
@@ -396,8 +396,8 @@ describe('AutoLLM dashboard', () => {
       initialConfigurationsFile: null,
       trainingPath: '/train.index',
       comparisonPath: '/test.index',
-      codex: {
-        executable: 'codex',
+      generation: { agent: 'CODEX' as const,
+        executable: 'generation',
         promptFile: null,
         prompt: null,
         model: null,
@@ -417,7 +417,7 @@ describe('AutoLLM dashboard', () => {
         ssh: null,
         workers: -1,
         watchdogGraceMillis: 1000,
-        codexTimeoutMillis: 10000,
+        generationTimeoutMillis: 10000,
         buildTimeoutMillis: 10000,
         startupTimeoutMillis: 10000,
         searchSpaceTimeoutMillis: 10000,
@@ -436,12 +436,12 @@ describe('AutoLLM dashboard', () => {
       testing: [],
       targets: {},
       screening: {},
-      generation: {
+      generation: { agent: 'CODEX' as const,
         model: null,
         reasoningEffort: null,
         ready: false,
         approvalLine:
-          'Generation and repairs: model NOT SELECTED; set codex.model before approval; reasoning effort Codex default (not pinned).',
+          'Generation and repairs: model NOT SELECTED; set generation.model before approval; reasoning effort agent default (not pinned).',
       },
     };
     store.proposal.set(proposal);
@@ -456,7 +456,7 @@ describe('AutoLLM dashboard', () => {
     expect(approval().disabled).toBe(true);
     store.proposal.set({
       ...proposal,
-      generation: {
+      generation: { agent: 'CODEX' as const,
         model: 'chosen-model',
         reasoningEffort: 'high',
         ready: true,
@@ -612,7 +612,7 @@ describe('AutoLLM dashboard', () => {
     TestBed.inject(AutoLlmStore).inspecting.set(false);
     fixture.detectChanges();
     await fixture.whenStable();
-    expect(fixture.nativeElement.textContent).toContain('Codex token usage · UNAVAILABLE');
+    expect(fixture.nativeElement.textContent).toContain('Generation token usage · UNAVAILABLE');
   });
   it('uses backend recovery eligibility and requires a recorded reason to end a trial', async () => {
     const store = TestBed.inject(AutoLlmStore);
@@ -748,11 +748,11 @@ describe('AutoLLM dashboard', () => {
       unavailableAttempts: 1,
     };
     (store.campaign as WritableSignal<AutoLlmCampaign | null>).update((c) =>
-      c ? { ...c, codexUsage: usage } : c,
+      c ? { ...c, generationUsage: usage } : c,
     );
     (store.trial as WritableSignal<AutoLlmTrial | null>).set({
       ...store.trial()!,
-      codexUsage: usage,
+      generationUsage: usage,
       attempts: [
         {
           number: 1,
@@ -762,15 +762,15 @@ describe('AutoLLM dashboard', () => {
           startedAt: '2026-10-12T00:00:00Z',
           finishedAt: null,
           failure: null,
-          codexEvidence: {
+          generationEvidence: {
             status: 'ARCHIVED',
-            threadId: 'thread',
+            sessionId: 'thread',
             failure: null,
             usage,
             conversations: [
               {
-                threadId: 'thread',
-                parentThreadId: null,
+                sessionId: 'thread',
+                parentSessionId: null,
                 path: 'conversations/thread.jsonl',
                 sha256: 'hash',
                 cliVersion: 'fixture',
@@ -800,9 +800,9 @@ describe('AutoLLM dashboard', () => {
   });
   it('renders readable live generation with observable counters and session identity', async () => {
     const store = TestBed.inject(AutoLlmStore);
-    (store.generation as WritableSignal<CodexProgress | null>).set({
+    (store.generation as WritableSignal<GenerationProgress | null>).set({
       state: 'ACTIVE',
-      threadId: 'live-thread',
+      sessionId: 'live-thread',
       lastActivityAt: '2026-10-20T10:00:00Z',
       turns: 1,
       commandsStarted: 3,
@@ -1041,7 +1041,7 @@ describe('AutoLLM dashboard', () => {
         'server-1': { selected: true, ready: true },
         'server-2': { selected: true, ready: true },
       },
-      generation: {
+      generation: { agent: 'CODEX' as const,
         model: 'model',
         reasoningEffort: null,
         ready: true,

@@ -29,7 +29,7 @@ export function timedTrial(
     tuningSeed: 2,
     comparisonSeed: 3,
     failure: null,
-    threadId: null,
+    sessionId: null,
     repairTurns: 0,
     winner: null,
     attempts,

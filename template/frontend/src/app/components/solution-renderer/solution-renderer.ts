@@ -1,20 +1,8 @@
 import { JsonPipe, NgComponentOutlet, DecimalPipe } from '@angular/common';
-import {
-  ChangeDetectionStrategy,
-  Component,
-  InjectionToken,
-  Type,
-  computed,
-  inject,
-  input,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { ResultDetail } from '../../model/normal-experiment';
+import { SOLUTION_RENDERERS } from '../../../extension-api/solution-view';
 
-/** Registered renderers receive signal inputs named result, selectedObjective and view. */
-export const SOLUTION_RENDERERS = new InjectionToken<Readonly<Record<string, Type<unknown>>>>(
-  'Mork solution renderers',
-  { providedIn: 'root', factory: () => ({}) },
-);
 @Component({
   selector: 'app-solution-renderer',
   imports: [JsonPipe, NgComponentOutlet, DecimalPipe],
@@ -133,7 +121,7 @@ export class SolutionRenderer {
   private readonly registered = inject(SOLUTION_RENDERERS);
   readonly renderer = computed(() =>
     this.detail().rendering.state === 'AVAILABLE'
-      ? (this.registered[this.detail().rendering.rendererId ?? ''] ?? null)
+      ? (this.registered.get(this.detail().rendering.rendererId ?? '') ?? null)
       : null,
   );
   readonly rendererInputs = computed(() => ({

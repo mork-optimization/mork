@@ -46,7 +46,7 @@ public final class AutoLlmStorageEstimate {
         }
         int active = Math.min(remaining, Math.max(1, selected.size()));
         int builds = Math.min(remaining, proposed.preparation().localBuilds());
-        int queued = Math.min(remaining, active + proposed.preparation().readyQueueSize() + proposed.codex().maxConcurrentSessions());
+        int queued = Math.min(remaining, active + proposed.preparation().readyQueueSize() + proposed.generation().maxConcurrentSessions());
         long source = sample.get("sourceBytes"), git = sample.get("checkoutGitBytes"), build = sample.get("buildOutputBytes"), jar = sample.get("artifactBytes");
         long checkout = plus(source, git, build), inputs = sample.get("inputContainerBytes"), runner = sample.get("runnerArtifactBytes");
         long comparisons = times(sample.get("testingInstances"), times(proposed.comparison().repetitions(), 2));

@@ -25,7 +25,7 @@ public final class AutoLlmTrialRunner {
     private final AutoLlmExecutionContext model;
     private final Path executionRoot;
     private final AutoLlmProcessRunner processes;
-    private final CodexTaskRunner codex;
+    private final GenerationTaskRunner generation;
     private final AutoLlmExecutionService workloads;
     private final Listener listener;
     private final java.util.function.BooleanSupplier stop;
@@ -47,9 +47,9 @@ public final class AutoLlmTrialRunner {
     private volatile GenerationMetadataBridge metadataBridge;
     public void prepareTrialLocally() { localOnly = true; execute(); }
     private final ReentrantLock metadataLock = new ReentrantLock();
-    public AutoLlmTrialRunner(AutoLlmExecutionContext model, Path root, AutoLlmProcessRunner processes, CodexTaskRunner codex,
+    public AutoLlmTrialRunner(AutoLlmExecutionContext model, Path root, AutoLlmProcessRunner processes, GenerationTaskRunner generation,
                               Listener listener, java.util.function.BooleanSupplier stop, Semaphore sessions) {
-        this.model = model; this.executionRoot = root; this.processes = processes; this.codex = codex;
+        this.model = model; this.executionRoot = root; this.processes = processes; this.generation = generation;
         this.workloads = new AutoLlmExecutionService(processes); this.listener = listener; this.stop = stop; this.sessions = sessions;
     }
     private boolean cancelled() { return shuttingDown || stop.getAsBoolean(); }
@@ -122,16 +122,16 @@ public final class AutoLlmTrialRunner {
                 try { runTrial(c, t); break; }
                 catch (RuntimeException e) {
                     if (e instanceof CancellationException) throw e;
-                    if (e instanceof CodexCapacityUtil.CapacityException capacity) {
-                        t.capacityWait = CodexCapacityUtil.schedule(t.capacityWait, capacity.getMessage(), waitClock, capacityRandom);
+                    if (e instanceof GenerationCapacityUtil.CapacityException capacity) {
+                        t.capacityWait = GenerationCapacityUtil.schedule(t.capacityWait, capacity.getMessage(), waitClock, capacityRandom);
                         t.problem = AutoLlmFailureUtil.describe(e, executionRoot); t.status = TrialStatus.WAITING_FOR_CAPACITY;
-                        c.problem = null; publish(c); event("codex-capacity-wait", Map.of("trial", t.number, "wait", t.capacityWait));
+                        c.problem = null; publish(c); event("generation-capacity-wait", Map.of("trial", t.number, "wait", t.capacityWait));
                         continue;
                     }
-                    if (e instanceof CodexQuotaUtil.QuotaLimitException quota) {
+                    if (e instanceof GenerationQuotaUtil.QuotaLimitException quota) {
                         t.quotaRetryAt = quota.retryAt().toString(); t.problem = AutoLlmFailureUtil.describe(e, executionRoot);
                         t.status = TrialStatus.WAITING_FOR_QUOTA; c.problem = null; publish(c);
-                        event("codex-quota-wait", Map.of("trial", t.number, "retryAt", t.quotaRetryAt, "failure", t.problem));
+                        event("generation-quota-wait", Map.of("trial", t.number, "retryAt", t.quotaRetryAt, "failure", t.problem));
                         continue;
                     }
                     var problem = AutoLlmFailureUtil.describe(e, executionRoot);
@@ -169,21 +169,21 @@ public final class AutoLlmTrialRunner {
         if (!attempt.stage.generation() || !Set.of(AttemptStatus.RUNNING, AttemptStatus.INTERRUPTED, AttemptStatus.FAILED, AttemptStatus.QUOTA_LIMIT, AttemptStatus.CAPACITY_LIMIT).contains(attempt.status)) return;
         Path root = executionRoot;
         try {
-            attempt.codexEvidence = codex.archive(root.resolve("source"), model.path(attempt.directory), trial.threadId);
-            if (attempt.codexEvidence.threadId() != null) trial.threadId = attempt.codexEvidence.threadId();
-            var recovered = codex.recoveredResult(model.path(attempt.directory), trial.threadId);
+            attempt.generationEvidence = generation.archive(root.resolve("source"), model.path(attempt.directory), trial.sessionId);
+            if (attempt.generationEvidence.sessionId() != null) trial.sessionId = attempt.generationEvidence.sessionId();
+            var recovered = generation.recoveredResult(model.path(attempt.directory), trial.sessionId);
             if (recovered != null) {
                 if (trial.repairPending) trial.repairTurns++;
                 trial.repairPending = false;
-                trial.capacityWait = null; trial.threadId = recovered.threadId(); trial.blacklist = recovered.manifest().blacklist();
+                trial.capacityWait = null; trial.sessionId = recovered.sessionId(); trial.blacklist = recovered.manifest().blacklist();
                 trial.complete(GENERATION, attempt.directory, null);
                 trial.resumeTurn = false; trial.failure = null;
                 finish(c, attempt, null);
-            } else trial.resumeTurn = trial.threadId != null;
+            } else trial.resumeTurn = trial.sessionId != null;
             trial.problem = null;
-        } catch (CodexEvidenceUtil.ArchiveException e) {
+        } catch (GenerationEvidence.ArchiveException e) {
             Path evidence = model.path(attempt.directory).resolve("evidence.json");
-            if (Files.isRegularFile(evidence)) attempt.codexEvidence = AutoLlmFileUtil.read(evidence, CodexEvidenceUtil.Evidence.class);
+            if (Files.isRegularFile(evidence)) attempt.generationEvidence = AutoLlmFileUtil.read(evidence, GenerationEvidence.Evidence.class);
             trial.status = TrialStatus.BLOCKED; trial.failure = ExceptionUtil.stacktrace(e); trial.resumeTurn = false;
             trial.problem = AutoLlmFailureUtil.describe(e, model.path(attempt.directory)); c.problem = trial.problem;
             attempt.status = AttemptStatus.FAILED; attempt.failure = trial.failure; attempt.finishedAt = Instant.now().toString();
@@ -196,9 +196,9 @@ public final class AutoLlmTrialRunner {
         c.executionHost = workloads.probe(c.config, root);
         var versions = new LinkedHashMap<>(TargetPreflightUtil.versions(c.executionHost));
         c.versions = Map.copyOf(versions);
-        Path codexVersion = preflight.resolve("codex-version");
-        runCommand(c, List.of(c.config.codex().executable(), "--version"), repo, codexVersion, 30_000, true);
-        versions.put("codex", AutoLlmFailureUtil.tail(codexVersion.resolve("stdout.log"), 4000) + AutoLlmFailureUtil.tail(codexVersion.resolve("stderr.log"), 4000));
+        Path generationVersion = preflight.resolve("generation-version");
+        runCommand(c, List.of(c.config.generation().executable(), "--version"), repo, generationVersion, 30_000, true);
+        versions.put("generation", AutoLlmFailureUtil.tail(generationVersion.resolve("stdout.log"), 4000) + AutoLlmFailureUtil.tail(generationVersion.resolve("stderr.log"), 4000));
         runCommand(c, List.of("git", "rev-parse", "--verify", c.config.project().ref() + "^{commit}"), repo, preflight.resolve("ref"), 30_000, true);
         try {
             String commit = Files.readString(preflight.resolve("ref/stdout.log")).strip();
@@ -311,8 +311,8 @@ public final class AutoLlmTrialRunner {
     }
     private void finish(AutoLlmExecutionContext c, AutoLlmCampaign.Attempt a, RuntimeException failure) {
         if (failure == null) a.status = AttemptStatus.SUCCEEDED;
-        else if (failure instanceof CodexQuotaUtil.QuotaLimitException) a.status = AttemptStatus.QUOTA_LIMIT;
-        else if (failure instanceof CodexCapacityUtil.CapacityException) a.status = AttemptStatus.CAPACITY_LIMIT;
+        else if (failure instanceof GenerationQuotaUtil.QuotaLimitException) a.status = AttemptStatus.QUOTA_LIMIT;
+        else if (failure instanceof GenerationCapacityUtil.CapacityException) a.status = AttemptStatus.CAPACITY_LIMIT;
         else if (failure instanceof CancellationException || AutoLlmCampaignStore.hasUncollectedJobs(model.path(a.directory)) || !AutoLlmFileUtil.ownedFiles(model.path(a.directory), "collection-failure.json").isEmpty()) a.status = AttemptStatus.INTERRUPTED;
         else a.status = AttemptStatus.FAILED;
         a.finishedAt = Instant.now().toString(); a.failure = failure == null ? null : ExceptionUtil.stacktrace(failure);
@@ -322,7 +322,7 @@ public final class AutoLlmTrialRunner {
         publish(c);
         if (a.stage.generation()) {
             Path evidence = model.path(a.directory).resolve("evidence.json");
-            if (Files.isRegularFile(evidence)) a.codexEvidence = AutoLlmFileUtil.read(evidence, CodexEvidenceUtil.Evidence.class);
+            if (Files.isRegularFile(evidence)) a.generationEvidence = AutoLlmFileUtil.read(evidence, GenerationEvidence.Evidence.class);
             publish(c);
         }
     }
@@ -339,35 +339,35 @@ public final class AutoLlmTrialRunner {
             if (cancelled()) throw new CancellationException();
             if (t.nextStage == GENERATION) {
                 boolean continuation = t.resumeTurn;
-                if (t.threadId != null && !continuation && t.repairTurns >= c.config.preparation().maxRepairs()) throw AutoLlmFailureUtil.error(AutoLlmFailureUtil.Category.COMPONENT, "REPAIRS_EXHAUSTED", "Preparation exhausted repair limit: " + t.failure, root);
+                if (t.sessionId != null && !continuation && t.repairTurns >= c.config.preparation().maxRepairs()) throw AutoLlmFailureUtil.error(AutoLlmFailureUtil.Category.COMPONENT, "REPAIRS_EXHAUSTED", "Preparation exhausted repair limit: " + t.failure, root);
                 t.status = TrialStatus.WAITING_FOR_GENERATION; publish(c);
                 try (var permit = es.urjc.etsii.grafo.util.ConcurrencyUtil.acquirePermit(sessions, this::cancelled)) {
-                if (t.capacityWait != null) CodexCapacityUtil.requireBudget(t.capacityWait, waitClock);
-                var a = attempt(c, t, t.threadId == null || continuation && t.outputDirectory(GENERATION) == null ? AttemptStage.GENERATION : AttemptStage.REPAIR); Path dir = model.path(a.directory);
-                t.repairPending |= t.threadId != null && !continuation;
+                if (t.capacityWait != null) GenerationCapacityUtil.requireBudget(t.capacityWait, waitClock);
+                var a = attempt(c, t, t.sessionId == null || continuation && t.outputDirectory(GENERATION) == null ? AttemptStage.GENERATION : AttemptStage.REPAIR); Path dir = model.path(a.directory);
+                t.repairPending |= t.sessionId != null && !continuation;
                 t.resumeTurn = false; publish(c);
                 try {
                     String prompt = c.prompt + "\nBuild/test command: " + c.config.project().buildCommand() + "\nFrozen seed descriptions: " + c.config.initialConfigurationsFile() + "\nTraining inputs: " + c.config.trainingPath();
                     prompt += "\nGeneration and initial preparation run locally; keep analysis and edits in this checkout. Use the controller metadata helper instead of local builds or experiments: " + metadataHelper(c, t) + ". It runs build/tests and --autollm-check in the preparation context and returns local evidence. Do not invoke pilots/tuning/comparisons yourself.";
                     if (t.failure != null && t.problem != null && t.problem.category() == AutoLlmFailureUtil.Category.COMPONENT) prompt += "\nRepair feedback:\n" + t.failure + "\nInspect the previous verification logs under " + root.resolve("attempts");
-                    CodexTaskRunner.Result result;
+                    GenerationTaskRunner.Result result;
                     try (var bridge = new GenerationMetadataBridge(source, root.resolve("metadata-requests"), options -> metadataCheck(c.id, t.number, options.get("blacklist"), options.get("requestId")))) {
                         metadataBridge = bridge;
-                        result = codex.run(c.config, source, dir, prompt, t.threadId, () -> cancelled() || c.problem != null);
+                        result = generation.run(c.config, source, dir, prompt, t.sessionId, () -> cancelled() || c.problem != null);
                     }
                     try {
                         metadataLock.lockInterruptibly();
-                        try { if (t.repairPending) t.repairTurns++; t.repairPending = false; t.capacityWait = null; t.threadId = result.threadId(); t.blacklist = result.manifest().blacklist(); t.complete(GENERATION, a.directory, null); t.failure = null; t.problem = null; finish(c, a, null); }
+                        try { if (t.repairPending) t.repairTurns++; t.repairPending = false; t.capacityWait = null; t.sessionId = result.sessionId(); t.blacklist = result.manifest().blacklist(); t.complete(GENERATION, a.directory, null); t.failure = null; t.problem = null; finish(c, a, null); }
                         finally { metadataLock.unlock(); }
                     } catch (InterruptedException e) { Thread.currentThread().interrupt(); throw new CancellationException("Generation interrupted while awaiting a metadata check"); }
                 } catch (RuntimeException e) {
                     if (c.problem != null && e instanceof CancellationException && !cancelled()) e = new AutoLlmFailureUtil.StageException(c.problem, e);
-                    if (e instanceof CodexQuotaUtil.QuotaLimitException quota) t.quotaRetryAt = quota.retryAt().toString();
+                    if (e instanceof GenerationQuotaUtil.QuotaLimitException quota) t.quotaRetryAt = quota.retryAt().toString();
                     t.failure = ExceptionUtil.stacktrace(e); finish(c, a, e);
-                    if (a.codexEvidence != null && a.codexEvidence.threadId() != null) t.threadId = a.codexEvidence.threadId();
-                    t.resumeTurn = e instanceof CancellationException && t.threadId != null; publish(c);
+                    if (a.generationEvidence != null && a.generationEvidence.sessionId() != null) t.sessionId = a.generationEvidence.sessionId();
+                    t.resumeTurn = e instanceof CancellationException && t.sessionId != null; publish(c);
                     if (e instanceof CancellationException) throw e;
-                    t.resumeTurn = t.threadId != null; publish(c); throw e;
+                    t.resumeTurn = t.sessionId != null; publish(c); throw e;
                 }
                 }
             }
@@ -489,13 +489,13 @@ public final class AutoLlmTrialRunner {
         trial.status = TrialStatus.WAITING_FOR_CAPACITY; publish(campaign);
         while (true) {
             if (cancelled() || Thread.currentThread().isInterrupted()) throw new CancellationException("Capacity wait cancelled");
-            CodexCapacityUtil.requireBudget(trial.capacityWait, waitClock);
+            GenerationCapacityUtil.requireBudget(trial.capacityWait, waitClock);
             long remaining = java.time.Duration.between(waitClock.instant(), Instant.parse(trial.capacityWait.nextRetryAt())).toMillis();
             if (remaining <= 0) break;
             waitSleep.accept(Math.min(1000, remaining));
         }
         trial.problem = null; trial.failure = null; publish(campaign);
-        event("codex-capacity-resumed", Map.of("trial", trial.number, "retry", trial.capacityWait.retries()));
+        event("generation-capacity-resumed", Map.of("trial", trial.number, "retry", trial.capacityWait.retries()));
     }
     private void awaitQuota(AutoLlmExecutionContext campaign, AutoLlmCampaign.Trial trial) {
         if (trial.quotaRetryAt == null) return;
@@ -508,7 +508,7 @@ public final class AutoLlmTrialRunner {
             waitSleep.accept(Math.min(1000, remaining));
         }
         trial.quotaRetryAt = null; trial.problem = null; trial.failure = null; publish(campaign);
-        event("codex-quota-resumed", Map.of("trial", trial.number));
+        event("generation-quota-resumed", Map.of("trial", trial.number));
     }
     private Path baselineArtifact(AutoLlmExecutionContext c) {
         Path identity = executionRoot.resolve("baseline/artifact.json");
@@ -642,7 +642,7 @@ public final class AutoLlmTrialRunner {
             if (trial == null || !(Set.of(TrialStatus.GENERATION, TrialStatus.REPAIR).contains(trial.status) || trial.attempts.isEmpty() || trial.attempts.getLast().status != AttemptStatus.RUNNING)) throw new IllegalStateException("Metadata checks are available only during generation/repair");
             Path root = executionRoot, source = root.resolve("source");
             Path output = root.resolve("metadata/" + requestId);
-            // The metadata bridge/API owns this check while the campaign thread waits for local Codex.
+            // The metadata bridge/API owns this check while the campaign thread waits for local generation.
             try (var permit = es.urjc.etsii.grafo.util.ConcurrencyUtil.acquirePermit(buildPermits, this::cancelled)) {
                 runCommand(campaign, campaign.config.project().buildCommand(), source, output.resolve("build"), campaign.config.execution().buildTimeoutMillis(), false);
                 var probe = new AutoLlmCampaign.Trial(); probe.targetId = trial.targetId; probe.targetRevision = trial.targetRevision; probe.number = trial.number; probe.pilotSeed = trial.pilotSeed; probe.blacklist = blacklist == null ? trial.blacklist : blacklist;

@@ -84,8 +84,8 @@ export class AutoLlmStore {
       attempts: (current.attempts ?? []).map((attempt) => ({
         ...attempt,
         failure: saved.attempts.find((a) => a.number === attempt.number)?.failure ?? null,
-        codexEvidence:
-          saved.attempts.find((a) => a.number === attempt.number)?.codexEvidence ?? null,
+        generationEvidence:
+          saved.attempts.find((a) => a.number === attempt.number)?.generationEvidence ?? null,
       })),
     };
   });

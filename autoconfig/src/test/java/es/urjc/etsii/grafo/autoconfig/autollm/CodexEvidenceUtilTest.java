@@ -27,18 +27,18 @@ class CodexEvidenceUtilTest {
     private void counter(Path path, int input, int output) {
         AutoLlmFileUtil.append(path, Map.of("type", "event_msg", "payload", Map.of("type", "token_count", "info", Map.of("total_token_usage", counts(input, output)))));
     }
-    private CodexEvidenceUtil.Evidence collect(Path output, String id) { return CodexEvidenceUtil.collect(home(), checkout(), output, id); }
+    private GenerationEvidence.Evidence collect(Path output, String id) { return CodexEvidenceUtil.collect(home(), checkout(), output, id); }
     private String id() { return UUID.randomUUID().toString(); }
 
     @Test void missingConversationCanBeCollectedLaterAndFailedAttemptsArePreserved() throws Exception {
         String thread = id(); Path output = temp.resolve("attempt");
         CodexEvidenceUtil.begin(home(), checkout(), output, null);
-        assertThrows(CodexEvidenceUtil.ArchiveException.class, () -> collect(output, thread));
+        assertThrows(GenerationEvidence.ArchiveException.class, () -> collect(output, thread));
         session(thread, null);
         var recovered = collect(output, thread); assertEquals("ARCHIVED", recovered.status());
         var failures = AutoLlmFileUtil.ownedFiles(output.resolve("collection-failures"), "evidence.json");
         assertEquals(1, failures.size());
-        assertEquals("FAILED", AutoLlmFileUtil.read(failures.getFirst(), CodexEvidenceUtil.Evidence.class).status());
+        assertEquals("FAILED", AutoLlmFileUtil.read(failures.getFirst(), GenerationEvidence.Evidence.class).status());
         assertEquals(recovered, collect(output, thread));
     }
     @Test void unavailableConversationIsNotSealedWhenItsSessionArrivesLater() {
@@ -51,17 +51,17 @@ class CodexEvidenceUtilTest {
         String thread = id(); Path output = temp.resolve("attempt");
         var processes = org.mockito.Mockito.mock(AutoLlmProcessRunner.class);
         org.mockito.Mockito.when(processes.run(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyBoolean(), org.mockito.ArgumentMatchers.anyLong())).thenAnswer(call -> {
+                org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyBoolean(), org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyMap(), org.mockito.ArgumentMatchers.anySet(), org.mockito.ArgumentMatchers.any())).thenAnswer(call -> {
             AutoLlmFileUtil.append(output.resolve("stdout.log"), Map.of("type", "thread.started", "thread_id", thread));
             AutoLlmFileUtil.append(output.resolve("stdout.log"), Map.of("type", "turn.completed"));
-            AutoLlmFileUtil.write(output.resolve("manifest.json"), new CodexTaskRunner.Manifest(List.of(), List.of(), List.of(), null, List.of(), List.of(), List.of()));
+            AutoLlmFileUtil.write(output.resolve("manifest.json"), new GenerationTaskRunner.Manifest(List.of(), List.of(), List.of(), null, List.of(), List.of(), List.of()));
             return new AutoLlmProcessRunner.Result(0, false, 1);
         });
-        var codex = new CodexTaskRunner(processes, new org.springframework.mock.env.MockEnvironment().withProperty("CODEX_HOME", home().toString()));
-        assertThrows(CodexEvidenceUtil.ArchiveException.class, () -> codex.run(AutoLlmConfig.defaults(), checkout(), output, "fixture", null, () -> false));
+        var codex = new GenerationTaskRunner(processes, new org.springframework.mock.env.MockEnvironment().withProperty("CODEX_HOME", home().toString()));
+        assertThrows(GenerationEvidence.ArchiveException.class, () -> codex.run(AutoLlmConfig.defaults(), checkout(), output, "fixture", null, () -> false));
         session(thread, null);
         assertEquals("ARCHIVED", codex.archive(checkout(), output, thread).status());
-        assertEquals(thread, codex.recoveredResult(output, thread).threadId());
+        assertEquals(thread, codex.recoveredResult(output, thread).sessionId());
         assertEquals(1, org.mockito.Mockito.mockingDetails(processes).getInvocations().size());
     }
     @Test void exactConversationAndLinkedChildrenAreArchivedWithDeduplicatedUsage() throws Exception {
@@ -95,8 +95,8 @@ class CodexEvidenceUtilTest {
         for (Path directory : List.of(first, repair)) {
             var attempt = new AutoLlmCampaign.Attempt(); attempt.stage = AutoLlmCampaign.AttemptStage.GENERATION; attempt.status = AutoLlmCampaign.AttemptStatus.INTERRUPTED; attempt.directory = temp.relativize(directory).toString(); trial.attempts.add(attempt);
         }
-        CodexEvidenceUtil.report(campaign, temp); assertEquals(40L, campaign.codexUsage.tokens().totalTokens());
-        CodexEvidenceUtil.report(campaign, temp); assertEquals(40L, campaign.codexUsage.tokens().totalTokens());
+        GenerationEvidence.report(campaign, temp); assertEquals(40L, campaign.generationUsage.tokens().totalTokens());
+        GenerationEvidence.report(campaign, temp); assertEquals(40L, campaign.generationUsage.tokens().totalTokens());
     }
     @Test void cumulativeCountersUseValidatedDeltasAndCliUsageIsOnlySupplemental() {
         String root = id(); Path main = session(root, null); counter(main, 100, 10);
@@ -105,7 +105,7 @@ class CodexEvidenceUtilTest {
         AutoLlmFileUtil.append(repair.resolve("stdout.log"), Map.of("type", "turn.completed", "usage", counts(130, 20)));
         var evidence = collect(repair, root);
         assertEquals(30L, evidence.usage().tokens().inputTokens()); assertEquals(10L, evidence.usage().tokens().outputTokens());
-        var usage = AutoLlmFileUtil.read(repair.resolve("usage.json"), CodexEvidenceUtil.Usage.class);
+        var usage = AutoLlmFileUtil.read(repair.resolve("usage.json"), GenerationEvidence.Usage.class);
         assertEquals(1, usage.cliReportedUsage().size()); assertEquals("COMPLETE", usage.summary().status());
     }
     @Test void decreasedCountersAreUnavailableRatherThanNegativeOrInvented() {
@@ -128,19 +128,19 @@ class CodexEvidenceUtilTest {
     }
     @Test void missingExactSessionAndWrongCheckoutStopArchival() {
         String root = id(); session(id(), null);
-        assertThrows(CodexEvidenceUtil.ArchiveException.class, () -> collect(temp.resolve("missing"), root));
+        assertThrows(GenerationEvidence.ArchiveException.class, () -> collect(temp.resolve("missing"), root));
         Path file = session(root, null);
-        assertThrows(CodexEvidenceUtil.ArchiveException.class, () -> CodexEvidenceUtil.collect(home(), temp.resolve("other"), temp.resolve("wrong"), root));
+        assertThrows(GenerationEvidence.ArchiveException.class, () -> CodexEvidenceUtil.collect(home(), temp.resolve("other"), temp.resolve("wrong"), root));
         assertTrue(Files.exists(file));
     }
     @Test void corruptedCompletedArchiveFailsVerification() throws Exception {
         String root = id(); Path output = temp.resolve("attempt"); CodexEvidenceUtil.begin(home(), checkout(), output, null); session(root, null);
         var result = collect(output, root); Files.writeString(output.resolve(result.conversations().getFirst().path()), "changed");
-        assertThrows(CodexEvidenceUtil.ArchiveException.class, () -> collect(output, root));
+        assertThrows(GenerationEvidence.ArchiveException.class, () -> collect(output, root));
     }
     @Test void olderCampaignsRemainReadableWithUnavailableUsage() {
         var campaign = AutoLlmFileUtil.JSON.readValue("{\"schemaVersion\":1,\"id\":\"legacy\",\"trials\":[{\"number\":1,\"attempts\":[{\"stage\":\"GENERATION\",\"directory\":\"old\",\"status\":\"FAILED\"}]}]}", AutoLlmCampaign.class);
-        CodexEvidenceUtil.report(campaign, temp); assertEquals("UNAVAILABLE", campaign.codexUsage.status()); assertNull(campaign.codexUsage.tokens().inputTokens()); assertNull(campaign.trials.getFirst().attempts.getFirst().codexEvidence);
+        GenerationEvidence.report(campaign, temp); assertEquals("UNAVAILABLE", campaign.generationUsage.status()); assertNull(campaign.generationUsage.tokens().inputTokens()); assertNull(campaign.trials.getFirst().attempts.getFirst().generationEvidence);
     }
     @Test void recoveryWithoutPreAttemptBaselineArchivesButDoesNotInventTokenDeltas() {
         String root = id(); Path main = session(root, null); response(main, "a", 10, 4);
@@ -158,7 +158,7 @@ class CodexEvidenceUtilTest {
         Files.copy(other, other.resolveSibling("duplicate.jsonl"));
         assertEquals("ARCHIVED", collect(temp.resolve("valid"), root).status());
         Files.copy(main, main.resolveSibling("duplicate-root.jsonl"));
-        assertThrows(CodexEvidenceUtil.ArchiveException.class, () -> collect(temp.resolve("ambiguous"), root));
+        assertThrows(GenerationEvidence.ArchiveException.class, () -> collect(temp.resolve("ambiguous"), root));
     }
     @Test void newlyPersistedChildDoesNotRecountResponsesAlreadyPresentInParentBaseline() {
         String root = id(), child = id(); Path main = session(root, null); response(main, "old", 10, 4);
@@ -173,8 +173,8 @@ class CodexEvidenceUtilTest {
     }
     @Test void missingConversationBeforeRepairIsAnInfrastructureFailureWithArtifacts() {
         Path output = temp.resolve("repair");
-        assertThrows(CodexEvidenceUtil.ArchiveException.class, () -> CodexEvidenceUtil.begin(home(), checkout(), output, id()));
-        assertEquals("FAILED", AutoLlmFileUtil.read(output.resolve("evidence.json"), CodexEvidenceUtil.Evidence.class).status());
+        assertThrows(GenerationEvidence.ArchiveException.class, () -> CodexEvidenceUtil.begin(home(), checkout(), output, id()));
+        assertEquals("FAILED", AutoLlmFileUtil.read(output.resolve("evidence.json"), GenerationEvidence.Evidence.class).status());
     }
     @Test void interruptedCliRecordsDoNotPreventNativeArchivalAndWrongThreadIsRejected() throws Exception {
         String root = id(); Path output = temp.resolve("attempt"); CodexEvidenceUtil.begin(home(), checkout(), output, null); session(root, null);
@@ -182,6 +182,6 @@ class CodexEvidenceUtilTest {
         assertEquals("ARCHIVED", collect(output, root).status());
         Path wrong = temp.resolve("wrong-thread"); Files.createDirectories(wrong);
         Files.writeString(wrong.resolve("stdout.log"), "{\"type\":\"thread.started\",\"thread_id\":\"" + root + "\"}\n");
-        assertThrows(CodexEvidenceUtil.ArchiveException.class, () -> collect(wrong, id()));
+        assertThrows(GenerationEvidence.ArchiveException.class, () -> collect(wrong, id()));
     }
 }

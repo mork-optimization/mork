@@ -86,14 +86,14 @@ public final class AutoLlmReportHtml {
         out.append("<div class=cards>"); card(out, "Instance wins", report.wins()); card(out, "Instance ties", report.ties()); card(out, "Instance losses", report.losses()); out.append("</div>");
         paragraph(out, "Counts are trial–instance comparisons, not trial outcomes. Each instance uses the mean across repetitions. Gap is 100 × (proposal − SOTA) / |SOTA| for minimization, with reversed numerator for maximization. Negative means better. Instances have equal weight; zero references make percentage gap undefined. Tie tolerance: 1e-9 × max(1, |SOTA|, |proposal|). No cross-host ranking is implied.");
         for (String warning : report.warnings()) paragraph(out, warning);
-        out.append("<h3>Campaign token usage</h3>"); usage(out, AutoLlmFileUtil.JSON.valueToTree(c.codexUsage)); out.append("</section>");
+        out.append("<h3>Campaign token usage</h3>"); usage(out, AutoLlmFileUtil.JSON.valueToTree(c.generationUsage)); out.append("</section>");
         out.append("<section id=trials><h2>Trial summary</h2>");
         table(out, "Trial", "Status / host", "Elapsed", "Total tokens", "Average SOTA gap", "Wins", "Ties", "Losses", "Generated components", "Irace winner approach");
         for (var trial : report.trials()) {
             var t = trial.saved(); var names = new ArrayList<String>(); for (var component : trial.components()) names.add(component.name());
             var comparison = trial.comparison();
             out.append("<tr><td><a href=#trial-").append(t.number).append(">Trial ").append(t.number).append("</a></td>");
-            for (Object cell : List.of(t.status + " / " + Objects.toString(t.targetId,"unassigned"), time(trial.elapsed()), AutoLlmReportMetrics.total(t.codexUsage), gap(comparison),
+            for (Object cell : List.of(t.status + " / " + Objects.toString(t.targetId,"unassigned"), time(trial.elapsed()), AutoLlmReportMetrics.total(t.generationUsage), gap(comparison),
                     comparison == null ? "—" : comparison.wins(), comparison == null ? "—" : comparison.ties(), comparison == null ? "—" : comparison.losses(),
                     names.isEmpty() ? "Unavailable" : String.join(", ", names), approach(trial.winner()))) out.append("<td>").append(escape(cell)).append("</td>");
             out.append("</tr>");
@@ -105,7 +105,7 @@ public final class AutoLlmReportHtml {
         out.append("<section id=tokens><h2>Token usage per trial</h2>"); AutoLlmReportCharts.tokens(out, report.trials());
         table(out, "Trial", "Input", "Output", "Total / completeness", "Attempt coverage");
         for (var trial : report.trials()) {
-            var usage = trial.saved().codexUsage; var tokens = usage == null ? null : usage.tokens();
+            var usage = trial.saved().generationUsage; var tokens = usage == null ? null : usage.tokens();
             out.append("<tr>"); trialLink(out, trial.saved().number);
             for (Object value : List.of(tokens == null ? "Unavailable" : Objects.toString(tokens.inputTokens(), "Unavailable"),
                     tokens == null ? "Unavailable" : Objects.toString(tokens.outputTokens(), "Unavailable"), AutoLlmReportMetrics.total(usage), AutoLlmReportMetrics.coverage(usage)))
@@ -132,7 +132,7 @@ public final class AutoLlmReportHtml {
         paragraph(out, "Baseline commit: " + Objects.toString(c.baselineCommit, "Unavailable"));
         paragraph(out, "Campaign created: " + c.createdAt + " · execution started: " + Objects.toString(c.startedAt,"Unavailable") + " · stopped: " + Objects.toString(c.stoppedAt,"Unavailable"));
         if (c.config != null) {
-            paragraph(out, "Generation model: " + c.config.codex().model() + " · reasoning effort: " + Objects.toString(c.config.codex().reasoningEffort(), "Codex default"));
+            paragraph(out, "Generation agent: " + c.config.generation().agent() + " · model: " + c.config.generation().model() + " · reasoning effort: " + Objects.toString(c.config.generation().reasoningEffort(), "agent default"));
             out.append("<h3>Budgets and execution settings</h3>");
             json(out, Map.of("tuning", c.config.tuning(), "comparison", c.config.comparison(), "preparation", c.config.preparation(), "execution", c.config.execution()));
         }
@@ -200,7 +200,7 @@ public final class AutoLlmReportHtml {
                     complete == null || complete.improvementPercent() == null ? "Unavailable" : number(-complete.improvementPercent()), complete == null ? "Excluded" : complete.outcome(),
                     (sota == null ? 0 : sota.objective().count()) + " / " + (proposal == null ? 0 : proposal.objective().count()), instance.counts());
         }
-        endTable(out); out.append("<h3>Trial token usage</h3>"); usage(out, AutoLlmFileUtil.JSON.valueToTree(t.codexUsage));
+        endTable(out); out.append("<h3>Trial token usage</h3>"); usage(out, AutoLlmFileUtil.JSON.valueToTree(t.generationUsage));
         out.append("<h3>Generation and repair overhead</h3>");
         table(out, "Kind", "Recorded attempts", "Input", "Output", "Total / completeness", "Attempt coverage", "Summed attempt duration");
         for (var stage : AutoLlmReportMetrics.usageStages(trial)) {

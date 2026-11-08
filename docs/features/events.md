@@ -119,7 +119,7 @@ All instances are server-paginated. The browser caches at most ten visited detai
 
 From `template/frontend`, run `npm start` for development, `npm run typecheck`, `npm test`, or `npm run build`. Release builds use `npm run build:static` and commit the generated `template/src/main/resources/static` files so generated projects require no Node.js installation.
 
-Problem-specific visualization uses the optional backend `SolutionViewProvider` and frontend `SOLUTION_RENDERERS` registry. Renderers receive typed result metadata, selected objective and retained JSON view data; the default inspector remains useful without a custom renderer. See the frontend README for the extension contract.
+Problem-specific visualization uses the optional backend `SolutionViewProvider` and frontend visualizers in `template/frontend/src/custom/solution-views/`, registered in `src/custom/configuration.ts`. Implement the `SolutionView` contract exported from `src/extension-api/public-api.ts`; the framework supplies typed result metadata, the selected objective, and retained JSON data. The default inspector remains useful without a visualizer. The full frontend is editable: `src/app/` contains framework internals whose local changes users must merge, while the public extension API has documented compatibility guarantees. See the frontend README and `template/frontend/MIGRATIONS.md` for the contract and migration examples.
 
 ## Using custom events
 

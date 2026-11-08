@@ -8,14 +8,14 @@ import java.util.Map;
 @ConfigurationProperties("autollm")
 public record AutoLlmConfig(Project project, String workspace, Integer trials, Long seed, Integer maxParameters,
                             String sotaFile, String initialConfigurationsFile, String trainingPath, String comparisonPath,
-                            Codex codex, Preparation preparation, Tuning tuning, Comparison comparison, Execution execution) {
+                            Generation generation, Preparation preparation, Tuning tuning, Comparison comparison, Execution execution) {
     public AutoLlmConfig {
         project = project == null ? new Project(null, null, null, null, null) : project;
         workspace = workspace == null ? "autollm-runs" : workspace;
         trials = trials == null ? 10 : trials;
         seed = seed == null ? 1234L : seed;
         maxParameters = maxParameters == null ? 299 : maxParameters;
-        codex = codex == null ? new Codex(null, null, null, null, null, null) : codex;
+        generation = generation == null ? new Generation(null, null, null, null, null, null, null) : generation;
         preparation = preparation == null ? new Preparation(null, null, null, null, null, null, null) : preparation;
         tuning = tuning == null ? new Tuning(null, null, null, null) : tuning;
         comparison = comparison == null ? new Comparison(null, null) : comparison;
@@ -30,8 +30,9 @@ public record AutoLlmConfig(Project project, String workspace, Integer trials, L
             runArguments = runArguments == null ? List.of() : List.copyOf(runArguments);
         }
     }
-    public record Codex(String executable, String promptFile, String prompt, String model, String reasoningEffort, Integer maxConcurrentSessions) {
-        public Codex { executable = executable == null ? "codex" : executable; maxConcurrentSessions = maxConcurrentSessions == null ? 2 : maxConcurrentSessions; }
+    public enum Agent { CODEX, CLAUDE_CODE }
+    public record Generation(Agent agent, String executable, String promptFile, String prompt, String model, String reasoningEffort, Integer maxConcurrentSessions) {
+        public Generation { agent = agent == null ? Agent.CODEX : agent; executable = executable == null ? (agent == Agent.CODEX ? "codex" : "claude") : executable; maxConcurrentSessions = maxConcurrentSessions == null ? 2 : maxConcurrentSessions; }
     }
     public record Preparation(Long probeDurationMillis, Long pilotDurationMillis, Integer maxRepairs,
                               Integer localBuilds, Integer readyQueueSize, Integer localWorkers, String localHeap) {
@@ -48,13 +49,13 @@ public record AutoLlmConfig(Project project, String workspace, Integer trials, L
     }
     public AutoLlmConfig withTrials(int count) {
         return new AutoLlmConfig(project, workspace, count, seed, maxParameters, sotaFile, initialConfigurationsFile,
-                trainingPath, comparisonPath, codex, preparation, tuning, comparison, execution);
+                trainingPath, comparisonPath, generation, preparation, tuning, comparison, execution);
     }
     public AutoLlmConfig localPreparation() {
         var e = execution;
         return new AutoLlmConfig(project, workspace, trials, seed, maxParameters, sotaFile, initialConfigurationsFile,
-                trainingPath, comparisonPath, codex, preparation, tuning, comparison,
-                new Execution(preparation.localWorkers(), e.watchdogGraceMillis(), e.codexTimeoutMillis(), e.buildTimeoutMillis(),
+                trainingPath, comparisonPath, generation, preparation, tuning, comparison,
+                new Execution(preparation.localWorkers(), e.watchdogGraceMillis(), e.generationTimeoutMillis(), e.buildTimeoutMillis(),
                         e.startupTimeoutMillis(), e.searchSpaceTimeoutMillis(), e.phaseTimeoutMillis(), e.stageTimeoutMillis(), preparation.localHeap(), Target.LOCAL, null));
     }
     public record Tuning(Integer evaluations, Long ignoreInitialMillis, Long intervalDurationMillis, Boolean logScaleArea) {
@@ -64,13 +65,13 @@ public record AutoLlmConfig(Project project, String workspace, Integer trials, L
     public record Comparison(Integer repetitions, Long timeLimitMillis) {
         public Comparison { repetitions = repetitions == null ? 30 : repetitions; timeLimitMillis = timeLimitMillis == null ? 0L : timeLimitMillis; }
     }
-    public record Execution(Integer workers, Long watchdogGraceMillis, Long codexTimeoutMillis, Long buildTimeoutMillis,
+    public record Execution(Integer workers, Long watchdogGraceMillis, Long generationTimeoutMillis, Long buildTimeoutMillis,
                             Long startupTimeoutMillis, Long searchSpaceTimeoutMillis, Long phaseTimeoutMillis, Long stageTimeoutMillis, String heap,
                             Target target, Ssh ssh) {
         public Execution {
             target = target == null ? Target.LOCAL : target;
             workers = workers == null ? -1 : workers; watchdogGraceMillis = watchdogGraceMillis == null ? 30_000L : watchdogGraceMillis;
-            codexTimeoutMillis = codexTimeoutMillis == null ? 3_600_000L : codexTimeoutMillis;
+            generationTimeoutMillis = generationTimeoutMillis == null ? 3_600_000L : generationTimeoutMillis;
             buildTimeoutMillis = buildTimeoutMillis == null ? 1_800_000L : buildTimeoutMillis;
             startupTimeoutMillis = startupTimeoutMillis == null ? 300_000L : startupTimeoutMillis;
             searchSpaceTimeoutMillis = searchSpaceTimeoutMillis == null ? 120_000L : searchSpaceTimeoutMillis;
@@ -121,17 +122,17 @@ public record AutoLlmConfig(Project project, String workspace, Integer trials, L
     /** Resolve an immutable execution configuration for exactly one enrolled server. */
     public AutoLlmConfig forServer(Server server) {
         var e = execution;
-        var resolved = new Execution(server.workers() == null ? e.workers() : server.workers(), e.watchdogGraceMillis(), e.codexTimeoutMillis(), e.buildTimeoutMillis(),
+        var resolved = new Execution(server.workers() == null ? e.workers() : server.workers(), e.watchdogGraceMillis(), e.generationTimeoutMillis(), e.buildTimeoutMillis(),
                 e.startupTimeoutMillis(), e.searchSpaceTimeoutMillis(), e.phaseTimeoutMillis(), e.stageTimeoutMillis(), server.heap() == null ? e.heap() : server.heap(),
                 Target.SSH, new Ssh(server.id(), e.ssh().runnerArtifact(), List.of(server), e.ssh().reconnect()));
-        return new AutoLlmConfig(project, workspace, trials, seed, maxParameters, sotaFile, initialConfigurationsFile, trainingPath, comparisonPath, codex, preparation, tuning, comparison, resolved);
+        return new AutoLlmConfig(project, workspace, trials, seed, maxParameters, sotaFile, initialConfigurationsFile, trainingPath, comparisonPath, generation, preparation, tuning, comparison, resolved);
     }
     public AutoLlmConfig withPaths(String training, String comparison) {
-        return new AutoLlmConfig(project, workspace, trials, seed, maxParameters, sotaFile, initialConfigurationsFile, training, comparison, codex, preparation, tuning, this.comparison, execution);
+        return new AutoLlmConfig(project, workspace, trials, seed, maxParameters, sotaFile, initialConfigurationsFile, training, comparison, generation, preparation, tuning, this.comparison, execution);
     }
     public AutoLlmConfig withRef(String ref) {
         return new AutoLlmConfig(new Project(project.repository(), ref, project.buildCommand(), project.artifact(), project.runArguments()), workspace,
-                trials, seed, maxParameters, sotaFile, initialConfigurationsFile, trainingPath, comparisonPath, codex, preparation, tuning, this.comparison, execution);
+                trials, seed, maxParameters, sotaFile, initialConfigurationsFile, trainingPath, comparisonPath, generation, preparation, tuning, this.comparison, execution);
     }
     public static AutoLlmConfig defaults() { return new AutoLlmConfig(null, null, null, null, null, null, null, null, null, null, null, null, null, null); }
 }

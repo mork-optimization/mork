@@ -34,9 +34,9 @@ public final class AutoLlmFailureUtil {
         var visited = Collections.newSetFromMap(new IdentityHashMap<Throwable, Boolean>());
         for (Throwable cause = error; cause != null && visited.add(cause); cause = cause.getCause()) {
             if (cause instanceof StageException typed) return typed.failure();
-            if (cause instanceof CodexCapacityUtil.CapacityException capacity) return new Failure(Category.INFRASTRUCTURE, "CODEX_CAPACITY",
+            if (cause instanceof GenerationCapacityUtil.CapacityException capacity) return new Failure(Category.INFRASTRUCTURE, "CODEX_CAPACITY",
                     capacity.getMessage(), evidence == null ? List.of() : List.of(evidence.toString()), false, "Waiting to resume the same model and conversation.");
-            if (cause instanceof CodexQuotaUtil.QuotaLimitException quota) return new Failure(Category.QUOTA, "CODEX_USAGE_LIMIT",
+            if (cause instanceof GenerationQuotaUtil.QuotaLimitException quota) return new Failure(Category.QUOTA, "CODEX_USAGE_LIMIT",
                     quota.getMessage(), evidence == null ? List.of() : List.of(evidence.toString()), false,
                     "Waiting until " + quota.retryAt() + " before resuming the same Codex session.");
             causes.add(cause);
@@ -44,7 +44,7 @@ public final class AutoLlmFailureUtil {
         Category category = Category.UNKNOWN;
         Throwable detail = causes.getLast();
         for (var cause : causes) {
-            if (cause instanceof ExecutionTargetException || cause instanceof CodexEvidenceUtil.ArchiveException) {
+            if (cause instanceof ExecutionTargetException || cause instanceof GenerationEvidence.ArchiveException) {
                 category = Category.INTEGRITY; detail = cause; break;
             }
             if (cause instanceof SshTransport.ConnectionException) {

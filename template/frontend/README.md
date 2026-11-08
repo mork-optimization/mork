@@ -9,6 +9,28 @@ backend's execution mode:
 - Worker processes show a lightweight role notice because the coordinator owns the run-wide monitoring state.
 - Instance-property/selection utilities show a utility notice, not an experiment monitor.
 
+## Ownership and upgrades
+
+The entire frontend is editable. Directory ownership describes compatibility expectations, not edit permissions.
+
+| Location | Ownership and upgrade expectations |
+| --- | --- |
+| [`src/app/`](src/app/README.md) | Framework implementation. Internals may change in any version; users merge their modifications. |
+| [`src/extension-api/`](src/extension-api/README.md) | Supported public contracts exported by `public-api.ts`. All API changes are documented; breaking changes include migration examples. |
+| [`src/custom/`](src/custom/README.md) | Project-owned visualizers, registration, and styles. Preserve this directory during upgrades and apply documented contract migrations when needed. |
+| `src/main.ts`, `src/environments/`, `src/styles.scss`, `src/index.html`, build configuration, and scripts | Editable framework/integration infrastructure. Merge local changes and review toolchain requirements on upgrades. |
+| `public/` | Source assets. Use `public/custom/` for project assets to distinguish them from framework assets such as `favicon.svg`. |
+| `dist/` and `../src/main/resources/static/` | Generated output; rebuild and replace, never merge compiled bundles. |
+
+For ordinary customization, import only `src/extension-api/public-api.ts`. Importing internal framework
+code remains possible, but accepts the same upgrade responsibility as editing it. Only `src/main.ts`
+wires project configuration into the framework; the framework does not import user components.
+This is a source-ownership boundary, not a separate package or automatic updater.
+
+Read [MIGRATIONS.md](MIGRATIONS.md) before upgrading. It includes the migration from direct renderer
+registration in `app.config.ts` to `custom/configuration.ts`. Angular and build-tool upgrades may still
+require dependency changes even when the Mork extension contract is unchanged.
+
 ## Requirements
 
 - Node.js 26
@@ -47,13 +69,20 @@ Browser tests use the production `dist/` bundle and an HTTP/STOMP fixture, with 
 
 Metadata and all objective values remain inspectable after backend solutions are released. An optional Spring `@Component` implementing `SolutionViewProvider<S,I>` returns a renderer ID and JSON-safe `Map<String,Object>`. Best views are captured before release, capped at 256 KB each and 128 retained views; superseded best views are removed. Non-best/evicted views report `UNAVAILABLE`; no provider reports `UNSUPPORTED`.
 
-Register a standalone frontend component through `SOLUTION_RENDERERS` in `app.config.ts`:
+Create standalone visualizers under `src/custom/solution-views/`, implement `SolutionView` from
+`src/extension-api/public-api.ts`, and register them in `src/custom/configuration.ts`:
 
 ```ts
-{ provide: SOLUTION_RENDERERS, useValue: { 'my-problem': MySolutionView } }
+export const customConfiguration: FrontendExtensions = {
+  solutionViews: { 'my-problem': MySolutionView },
+};
 ```
 
-Its typed signal inputs are `result: ResultView`, `selectedObjective: string | null`, and `view: Readonly<Record<string, unknown>>`. The result identifies its instance/experiment/algorithm, original iteration label and seed. Never inject backend HTML into a renderer. Unregistered renderers show their JSON data; unsupported/evicted views show an honest availability message and keep metadata, related issues and artifact links. See [the API documentation](../../docs/features/normal-experiment-monitoring.md).
+The framework supplies `result`, `selectedObjective`, and `view` signal inputs. See the
+[public extension contract](src/extension-api/README.md) for a complete example, metadata types,
+registration, input updates, lifecycle, and availability behavior. Unregistered renderer IDs show JSON;
+unsupported/evicted views keep metadata, related issues, and artifact links. No framework edits are needed
+for registration. The full frontend remains available for deeper, user-maintained modifications.
 
 ## Implementation
 

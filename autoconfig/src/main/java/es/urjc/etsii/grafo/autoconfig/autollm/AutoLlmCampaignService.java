@@ -25,13 +25,13 @@ public class AutoLlmCampaignService {
     private final AutoLlmConfig defaults;
     private final AutoLlmCampaignStore store;
     private final AutoLlmProcessRunner processes;
-    private final CodexTaskRunner codex;
+    private final GenerationTaskRunner generation;
     private final AutoLlmReportService<?,?> reports;
     private final InstanceConfiguration instances;
     private final AutoLlmTargetProbeService targetProbes;
     public AutoLlmCampaignService(AutoLlmConfig defaults, AutoLlmCampaignStore store, AutoLlmProcessRunner processes,
-            CodexTaskRunner codex, AutoLlmReportService<?,?> reports, InstanceConfiguration instances) {
-        this.defaults = defaults; this.store = store; this.processes = processes; this.codex = codex; this.reports = reports; this.instances = instances;
+            GenerationTaskRunner generation, AutoLlmReportService<?,?> reports, InstanceConfiguration instances) {
+        this.defaults = defaults; this.store = store; this.processes = processes; this.generation = generation; this.reports = reports; this.instances = instances;
         this.targetProbes = new AutoLlmTargetProbeService(store, processes);
     }
     public AutoLlmConfig defaults() {
@@ -47,7 +47,7 @@ public class AutoLlmCampaignService {
         if (c.preparation().maxRepairs() < 0 || c.preparation().maxRepairs() > 100) errors.add("Repair limit must be between 0 and 100");
         if (c.preparation().probeDurationMillis() <= 0 || c.preparation().pilotDurationMillis() <= 0 || c.tuning().evaluations() <= 0 || c.comparison().repetitions() <= 0) errors.add("Budgets and repetitions must be positive");
         if (c.tuning().ignoreInitialMillis() < 0 || c.tuning().intervalDurationMillis() <= 0 || c.comparison().timeLimitMillis() < 0) errors.add("Invalid algorithm time horizon");
-        if (c.codex().maxConcurrentSessions() < 1) errors.add("Concurrent Codex sessions must be positive");
+        if (c.generation().maxConcurrentSessions() < 1) errors.add("Concurrent generation sessions must be positive");
         errors.addAll(AutoLlmExecutionService.validate(c));
         if (!AutoLlmNormalization.localPath(Path.of(c.workspace())).equals(store.root())) errors.add("Workspace is fixed by backend configuration");
         Path repo = Path.of(c.project().repository()).toAbsolutePath().normalize();
@@ -88,10 +88,10 @@ public class AutoLlmCampaignService {
             var seedJson = new ArrayList<Object>(); for (var seed : seeds) seedJson.add(codec.toJsonTree(seed));
             AutoLlmFileUtil.write(directory.resolve("control/seeds.json"), seedJson);
             c.config = new AutoLlmConfig(new AutoLlmConfig.Project(repo.toString(), requested.project().ref(), requested.project().buildCommand(), requested.project().artifact(), requested.project().runArguments()), requested.workspace(), requested.trials(), requested.seed(), requested.maxParameters(),
-                    directory.resolve("control/sota.json").toString(), directory.resolve("control/seeds.json").toString(), resolve(repo, requested.trainingPath()).toString(), resolve(repo, requested.comparisonPath()).toString(), requested.codex(), requested.preparation(), requested.tuning(), requested.comparison(), requested.execution());
-            String prompt = requested.codex().prompt();
+                    directory.resolve("control/sota.json").toString(), directory.resolve("control/seeds.json").toString(), resolve(repo, requested.trainingPath()).toString(), resolve(repo, requested.comparisonPath()).toString(), requested.generation(), requested.preparation(), requested.tuning(), requested.comparison(), requested.execution());
+            String prompt = requested.generation().prompt();
             if (prompt == null || prompt.isBlank()) {
-                if (requested.codex().promptFile() != null && !requested.codex().promptFile().isBlank()) prompt = Files.readString(resolve(repo, requested.codex().promptFile()));
+                if (requested.generation().promptFile() != null && !requested.generation().promptFile().isBlank()) prompt = Files.readString(resolve(repo, requested.generation().promptFile()));
                 else try (var input = getClass().getResourceAsStream("/autollm/prompt.txt")) { prompt = new String(Objects.requireNonNull(input).readAllBytes(), java.nio.charset.StandardCharsets.UTF_8); }
             }
             c.prompt = prompt.replace("{{ProjectName}}", repo.getFileName().toString()).replace("{{MaxParameters}}", c.config.maxParameters().toString());
@@ -175,7 +175,7 @@ public class AutoLlmCampaignService {
     private void acquire(AutoLlmCampaign c) {
         if (active != null) throw new IllegalStateException("A campaign is already active");
         ownership = store.acquire(c.id, store.directory(c.id)); current = c; active = c.id; cancelled = false;
-        sessions = new Semaphore(c.config.codex().maxConcurrentSessions(), true);
+        sessions = new Semaphore(c.config.generation().maxConcurrentSessions(), true);
         localBuilds = new Semaphore(c.config.preparation().localBuilds(), true); reportedAttempts.clear();
     }
     private void release() {
@@ -208,17 +208,17 @@ public class AutoLlmCampaignService {
         try { AutoLlmFileUtil.verifySources(root, AutoLlmFileUtil.read(root.resolve("control/canonical-hashes.json"), new TypeReference<>() {})); }
         catch (RuntimeException e) { throw AutoLlmFailureUtil.error(AutoLlmFailureUtil.Category.INTEGRITY, "CANONICAL_INPUT_CHANGED", e.getMessage(), root.resolve("control/canonical-hashes.json")); }
     }
-    public record GenerationSettings(String model, String reasoningEffort, boolean ready, String approvalLine) {
+    public record GenerationSettings(AutoLlmConfig.Agent agent, String model, String reasoningEffort, boolean ready, String approvalLine) {
         public static GenerationSettings from(AutoLlmConfig config) {
-            String model = AutoLlmNormalization.optional(config.codex().model());
-            String effort = AutoLlmNormalization.optional(config.codex().reasoningEffort());
-            String line = "Generation and repairs: " + (model == null ? "model NOT SELECTED; set codex.model before approval" : "model " + model + " (campaign setting)")
-                    + "; reasoning effort " + (effort == null ? "Codex default (not pinned)" : effort + " (campaign setting)")
-                    + ". Provider comes from Codex configuration; resumed sessions retain their observed provider. No automatic model fallback.";
-            return new GenerationSettings(model, effort, model != null, line);
+            String model = AutoLlmNormalization.optional(config.generation().model());
+            String effort = AutoLlmNormalization.optional(config.generation().reasoningEffort());
+            String line = "Generation and repairs: " + config.generation().agent() + "; " + (model == null ? "model NOT SELECTED; set generation.model before approval" : "model " + model + " (campaign setting)")
+                    + "; reasoning effort " + (effort == null ? "agent default (not pinned)" : effort + " (campaign setting)")
+                    + ". Provider comes from the selected CLI configuration; resumed sessions retain their observed provider. No automatic model fallback.";
+            return new GenerationSettings(config.generation().agent(), model, effort, model != null, line);
         }
         public void requireReady() {
-            if (!ready) throw new IllegalStateException("Set codex.model explicitly and review the revised proposal before approval or launch; the Codex CLI default is not pinned by the campaign.");
+            if (!ready) throw new IllegalStateException("Set generation.model explicitly and review the revised proposal before approval or launch; the CLI default is not pinned by the campaign.");
         }
     }
     public record Proposal(String digest, AutoLlmConfig configuration, List<String> training, List<String> testing,
@@ -389,7 +389,7 @@ public class AutoLlmCampaignService {
                     && previous.project().artifact().equals(configuration.project().artifact())
                     && previous.project().ref().equals(configuration.project().ref())
                     && previous.maxParameters().equals(configuration.maxParameters()) && previous.comparison().equals(configuration.comparison())
-                    && previous.codex().equals(configuration.codex()) && previous.preparation().equals(configuration.preparation()) && previous.tuning().equals(configuration.tuning())
+                    && previous.generation().equals(configuration.generation()) && previous.preparation().equals(configuration.preparation()) && previous.tuning().equals(configuration.tuning())
                     && AutoLlmFileUtil.hash(Path.of(previous.sotaFile())).equals(AutoLlmFileUtil.hash(resolve(Path.of(configuration.project().repository()), configuration.sotaFile())))
                     && previous.execution().equals(configuration.execution())
                     && (configuration.initialConfigurationsFile() == null || AutoLlmFileUtil.hash(Path.of(previous.initialConfigurationsFile())).equals(AutoLlmFileUtil.hash(resolve(Path.of(configuration.project().repository()), configuration.initialConfigurationsFile()))));
@@ -408,7 +408,7 @@ public class AutoLlmCampaignService {
             store.event(id, "draft-revised", proposalInternal(old));
             old.approvedProposal = null; old.approvedAt = null;
             old.config = new AutoLlmConfig(previous.project(), previous.workspace(), configuration.trials(), configuration.seed(), previous.maxParameters(),
-                    previous.sotaFile(), previous.initialConfigurationsFile(), previous.trainingPath(), previous.comparisonPath(), previous.codex(), previous.preparation(), previous.tuning(), previous.comparison(), previous.execution());
+                    previous.sotaFile(), previous.initialConfigurationsFile(), previous.trainingPath(), previous.comparisonPath(), previous.generation(), previous.preparation(), previous.tuning(), previous.comparison(), previous.execution());
             old.trials.clear(); var random = new SplittableRandom(configuration.seed()); long comparisonSeed = random.nextLong(1, Integer.MAX_VALUE);
             var seeds = new HashSet<Long>(); seeds.add(comparisonSeed);
             for (int i = 1; i <= configuration.trials(); i++) {
@@ -470,7 +470,7 @@ public class AutoLlmCampaignService {
                 AutoLlmInputUtil.copySettings(store.directory(c.id), root);
             } catch (IOException e) { throw new UncheckedIOException(e); }
             var cfg = model.config;
-            model.config = new AutoLlmConfig(cfg.project(), cfg.workspace(), cfg.trials(), cfg.seed(), cfg.maxParameters(), root.resolve("control/sota.json").toString(), root.resolve("control/seeds.json").toString(), cfg.trainingPath(), cfg.comparisonPath(), cfg.codex(), cfg.preparation(), cfg.tuning(), cfg.comparison(), cfg.execution());
+            model.config = new AutoLlmConfig(cfg.project(), cfg.workspace(), cfg.trials(), cfg.seed(), cfg.maxParameters(), root.resolve("control/sota.json").toString(), root.resolve("control/seeds.json").toString(), cfg.trainingPath(), cfg.comparisonPath(), cfg.generation(), cfg.preparation(), cfg.tuning(), cfg.comparison(), cfg.execution());
         }
         AutoLlmFileUtil.write(root.resolve("control/config.json"), model.config);
         if (trial != null) {
@@ -493,7 +493,7 @@ public class AutoLlmCampaignService {
                 var cfg = model.config;
                 String train = AutoLlmInputUtil.snapshot(trialRoot, "training", es.urjc.etsii.grafo.util.InstancePathUtil.list(cfg.trainingPath()));
                 String test = AutoLlmInputUtil.snapshot(trialRoot, "comparison", es.urjc.etsii.grafo.util.InstancePathUtil.list(cfg.comparisonPath()));
-                model.config = new AutoLlmConfig(cfg.project(), cfg.workspace(), cfg.trials(), cfg.seed(), cfg.maxParameters(), trialRoot.resolve("control/sota.json").toString(), trialRoot.resolve("control/seeds.json").toString(), train, test, cfg.codex(), cfg.preparation(), cfg.tuning(), cfg.comparison(), cfg.execution());
+                model.config = new AutoLlmConfig(cfg.project(), cfg.workspace(), cfg.trials(), cfg.seed(), cfg.maxParameters(), trialRoot.resolve("control/sota.json").toString(), trialRoot.resolve("control/seeds.json").toString(), train, test, cfg.generation(), cfg.preparation(), cfg.tuning(), cfg.comparison(), cfg.execution());
                 if (!PREPARATION_TARGET.equals(targetId)) model.config = new AutoLlmExecutionService(processes).stageInputs(model.config, trialRoot);
                 Files.copy(root.resolve("control/comparison-time-limits.json"), trialRoot.resolve("control/comparison-time-limits.json"), StandardCopyOption.REPLACE_EXISTING);
                 Files.createDirectories(trialRoot.resolve("baseline"));
@@ -525,7 +525,7 @@ public class AutoLlmCampaignService {
         return model;
     }
     protected AutoLlmTrialRunner runner(AutoLlmExecutionContext model, Path root, AutoLlmTrialRunner.Listener listener, java.util.function.BooleanSupplier stop, Semaphore permits) {
-        return new AutoLlmTrialRunner(model, root, processes, codex, listener, stop, permits);
+        return new AutoLlmTrialRunner(model, root, processes, generation, listener, stop, permits);
     }
     private AutoLlmTrialRunner newRunner(String targetId, String token, AutoLlmCampaign.Trial trial) {
         var c = current; var target = target(c, targetId);
@@ -540,7 +540,7 @@ public class AutoLlmCampaignService {
         var running = jobs.get(targetId); if (running == null || !running.token.equals(token) || current == null) return;
         apply(targetId, model); save();
         if (model.trial() != null) for (var attempt : model.trial().attempts) {
-            if (attempt.codexEvidence != null && attempt.status != AttemptStatus.RUNNING && reportedAttempts.add(targetId + "/" + model.trial().number + "/" + attempt.number)) reportAsync(false);
+            if (attempt.generationEvidence != null && attempt.status != AttemptStatus.RUNNING && reportedAttempts.add(targetId + "/" + model.trial().number + "/" + attempt.number)) reportAsync(false);
         }
     }
     private void apply(String targetId, AutoLlmExecutionContext.Snapshot model) {
@@ -652,7 +652,7 @@ public class AutoLlmCampaignService {
         for (var job : jobs.keySet()) if (job.startsWith("$trial-")) preparing++;
         for (var t : current.trials) if (t.status == TrialStatus.WAITING_FOR_TARGET && t.nextStage == AutoLlmCampaign.Stage.PREPARATION) waiting++;
         if (current.localPreparation.baselineReady) for (var t : current.trials) {
-            if (preparing >= current.config.codex().maxConcurrentSessions() + current.config.preparation().localBuilds() || preparing + waiting >= current.config.preparation().readyQueueSize() + available) break;
+            if (preparing >= current.config.generation().maxConcurrentSessions() + current.config.preparation().localBuilds() || preparing + waiting >= current.config.preparation().readyQueueSize() + available) break;
             if (!AutoLlmLocalRecovery.hasUnconfirmed(store.directory(current.id).resolve(t.directory)) && !jobs.containsKey("$trial-" + t.number) && AutoLlmAssignmentPolicy.queued(t) && t.nextStage.ordinal() < AutoLlmCampaign.Stage.PREPARATION.ordinal()) { try { launchLocal(t); preparing++; } catch (RuntimeException e) { t.status = TrialStatus.BLOCKED; t.problem = AutoLlmFailureUtil.describe(e, store.directory(current.id).resolve(t.directory)); save(); } }
         }
         for (var entry : current.targets.entrySet()) {
@@ -807,8 +807,8 @@ public class AutoLlmCampaignService {
             enqueue(() -> {
                 if (current == null || !current.id.equals(snapshot.id)) return;
                 if (sequence == reportSequence) {
-                    current.reportFailure = snapshot.reportFailure; current.reportUpdatedAt = snapshot.reportUpdatedAt; current.codexUsage = snapshot.codexUsage;
-                    for (int i = 0; i < current.trials.size(); i++) current.trials.get(i).codexUsage = snapshot.trials.get(i).codexUsage;
+                    current.reportFailure = snapshot.reportFailure; current.reportUpdatedAt = snapshot.reportUpdatedAt; current.generationUsage = snapshot.generationUsage;
+                    for (int i = 0; i < current.trials.size(); i++) current.trials.get(i).generationUsage = snapshot.trials.get(i).generationUsage;
                     save();
                 }
                 if (releaseAfter && sequence == reportSequence && jobs.isEmpty() && current.status != CampaignStatus.WAITING_FOR_TARGETS) release();
@@ -871,7 +871,7 @@ public class AutoLlmCampaignService {
         Path root = store.directory(c.id);
         if (!AutoLlmHtmlReports.available(root)) return;
         var errors = new ArrayList<String>();
-        try { CodexEvidenceUtil.report(c, root); } catch (RuntimeException e) { errors.add("Usage export: " + e); }
+        try { GenerationEvidence.report(c, root); } catch (RuntimeException e) { errors.add("Usage export: " + e); }
         try { reports.report(c, root); } catch (RuntimeException e) { errors.add("Excel/JSON export: " + e); }
         if (!AutoLlmHtmlReports.available(root)) return;
         var status = AutoLlmHtmlReports.generate(c, root, request, errors.isEmpty() ? null : String.join("; ", errors));

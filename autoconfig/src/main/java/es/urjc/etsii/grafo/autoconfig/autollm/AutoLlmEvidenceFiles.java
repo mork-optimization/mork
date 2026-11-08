@@ -114,7 +114,7 @@ public final class AutoLlmEvidenceFiles {
             Path directory = AutoLlmFileUtil.inside(campaign, attempt.directory);
             long previous = -1;
             while (true) {
-                var progress = CodexProgressUtil.refresh(directory);
+                var progress = GenerationProgressUtil.refresh(directory);
                 if (progress.cursor == previous) break;
                 previous = progress.cursor;
             }

@@ -21,7 +21,7 @@ public final class AutoLlmConfigUtil {
     }
     public static List<String> executionErrors(AutoLlmConfig config) {
         var errors = new ArrayList<String>();
-        for (long timeout : List.of(config.execution().watchdogGraceMillis(), config.execution().codexTimeoutMillis(), config.execution().buildTimeoutMillis(), config.execution().startupTimeoutMillis(), config.execution().searchSpaceTimeoutMillis(), config.execution().phaseTimeoutMillis(), config.execution().stageTimeoutMillis())) if (timeout <= 0) errors.add("All operational timeouts must be positive");
+        for (long timeout : List.of(config.execution().watchdogGraceMillis(), config.execution().generationTimeoutMillis(), config.execution().buildTimeoutMillis(), config.execution().startupTimeoutMillis(), config.execution().searchSpaceTimeoutMillis(), config.execution().phaseTimeoutMillis(), config.execution().stageTimeoutMillis())) if (timeout <= 0) errors.add("All operational timeouts must be positive");
         if (!config.execution().heap().matches("[1-9][0-9]*[kKmMgG]")) errors.add("Heap must be a JVM size such as 2g");
         return errors;
     }

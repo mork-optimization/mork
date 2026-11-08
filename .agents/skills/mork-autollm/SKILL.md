@@ -9,7 +9,9 @@ Use [the helper](scripts/mork_autollm.py); Mork owns generation, repairs, execut
 
 ## Prepare and approve
 
-Reuse established hosts, workspaces, resource limits and authorization. Preserve the user's checkout; trials use committed source. Keep Codex, credentials and transcripts local. Discover the repository/module, build argument array, executable, fixed SOTA, seeds and full original input pool.
+Reuse established hosts, workspaces, resource limits and authorization. Preserve the user's checkout; trials use committed source. Keep generation agents, credentials and transcripts local. For a new configuration, pass `config --agent CODEX` when this skill runs in Codex, or `config --agent CLAUDE_CODE` when it runs in Claude Code. Explicit user settings take precedence. Never infer the agent from installed binaries or change an existing campaign’s saved agent.
+
+Discover the repository/module, build argument array, executable, fixed SOTA, seeds and full original input pool.
 
 Use `backend status` to distinguish the saved address from live health; `backend start` discovers or launches a compatible controller. Restart through saved metadata with `backend restart`. Preserve unrelated controllers and use the matching operator for historical checkpoint versions.
 
@@ -23,7 +25,7 @@ Require a successful pristine build of the selected committed baseline before sc
 
 Write the server-returned canonical effective configuration; do not substitute a locally merged draft. Validate the configuration, create the draft, and run its baseline check. Preserve SOTA and all supplied seeds when pruning. Review `campaign proposal`: exact testing/training membership, trivial exclusions with reasons, selected servers/readiness and complete resolved settings. Present this concrete proposal to the user and obtain explicit campaign approval before launch, even for a broad “improve SOTA” request. Edit preferences before approval; select a healthy subset explicitly. Approve the reviewed digest and launch that revision. Changes require a revised review; unchanged resume/reconnect retains authorization.
 
-Include the proposal’s generation approval line prominently: the explicit model for generation and repairs, reasoning effort (or its unpinned Codex default), inherited provider policy and no automatic model fallback. Never choose a model for the user silently. A missing `codex.model` blocks approval and launch; ask the user to choose it, update the draft and review the new digest. Model or reasoning changes require renewed approval.
+Include the proposal’s generation approval line prominently: the explicit model for generation and repairs, reasoning effort (or its unpinned agent default), inherited provider policy and no automatic model fallback. Never choose a model for the user silently. A missing `generation.model` blocks approval and launch; ask the user to choose it, update the draft and review the new digest. Model or reasoning changes require renewed approval.
 
 Include one line in the campaign approval showing estimated additional peak storage and available space on the controller and each worker, with a warning if the campaign may not fit.
 
@@ -37,7 +39,7 @@ Use `remote --campaign ID --trial N` for stale, blocked or contradictory remote 
 
 Do not replay a mutation after an uncertain response: inspect saved state first. WAITING_FOR_REMOTE does not establish failure; CANCELLATION_PENDING does not confirm termination. Reconcile and collect evidence before conflicting work. Repair collection/reporting without repeating completed experiments.
 
-Run under the existing user/SSH account. Workspaces create their own `.mork` ownership metadata automatically; no system registry, provisioning or administrator access is required. Remote preflight and execution hold the configured workspace's `execution.lock`; collection does not. Separate workspaces can run concurrently even on the same machine. SSH aliases pointing at the same workspace share its lock and persistent workspace ID. WAITING_FOR_WORKSPACE is retryable contention, not host failure or a component repair. A crashed supervisor's uncertain child processes block reuse until reconciled. Use version-8 controllers/runners for new work; retain matching controllers for historical campaigns.
+Run under the existing user/SSH account. Workspaces create their own `.mork` ownership metadata automatically; no system registry, provisioning or administrator access is required. Remote preflight and execution hold the configured workspace's `execution.lock`; collection does not. Separate workspaces can run concurrently even on the same machine. SSH aliases pointing at the same workspace share its lock and persistent workspace ID. WAITING_FOR_WORKSPACE is retryable contention, not host failure or a component repair. A crashed supervisor's uncertain child processes block reuse until reconciled. Use checkpoint-version-9 controllers and version-8 runners for new work; retain matching controllers for historical campaigns.
 
 For complete deletion, use `cleanup plan --kind campaign|screening|probe|workspace`, review its scope/digest, then `cleanup apply --digest DIGEST` within the user's authorized scope. The plan exposes retained shared assets and unresolved ownership. Cleanup cancels and reconciles selected work without requiring disposable archives to be downloaded. Export diagnostics only when requested (`--export`); native transcripts require exact exclusive ownership. Offline hosts remain pending; resume apply and inspect status. `--shutdown` is for a complete workspace only. Keep `storage --maintain` as conservative compaction. When reusing workers, confirm termination/collection and preserve per-host resource/toolchain settings.
 

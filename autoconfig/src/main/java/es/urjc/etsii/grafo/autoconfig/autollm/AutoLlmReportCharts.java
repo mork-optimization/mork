@@ -95,14 +95,14 @@ final class AutoLlmReportCharts {
         var legend = new LinkedHashMap<String, String>(); legend.put("Input", INPUT); legend.put("Output", OUTPUT);
         out.append("<p>Bars show known input and output counts. Labels show reported totals and completeness; these can differ from the bar sum when counters are incomplete. Cached input and reasoning output are already included. Failed and interrupted attempts are included.</p>");
         double maximum = 1;
-        for (var trial : trials) maximum = Math.max(maximum, tokenBar(trial.saved().codexUsage));
+        for (var trial : trials) maximum = Math.max(maximum, tokenBar(trial.saved().generationUsage));
         int block = 0;
         for (var page : pages(trials, ignored -> 48)) {
             var svg = new Figure(out, "tokens", ++block, "Token usage per trial", page.size() * 48);
             for (int i = 0; i <= 4; i++) svg.tick(LEFT + WIDTH * i / 4.0, String.format(Locale.ROOT, "%,.0f", maximum * i / 4));
             int y = 34;
             for (var trial : page) {
-                var usage = trial.saved().codexUsage; var tokens = usage == null ? null : usage.tokens();
+                var usage = trial.saved().generationUsage; var tokens = usage == null ? null : usage.tokens();
                 svg.row(trial.saved().number, y, 48);
                 if (tokens == null || tokens.inputTokens() == null && tokens.outputTokens() == null) svg.text(LEFT, y + 18, "Input/output unavailable");
                 else {
@@ -118,7 +118,7 @@ final class AutoLlmReportCharts {
         }
     }
     private static double known(Long value) { return value == null ? 0 : value.doubleValue(); }
-    private static double tokenBar(CodexEvidenceUtil.Summary usage) {
+    private static double tokenBar(GenerationEvidence.Summary usage) {
         return usage == null || usage.tokens() == null ? 0 : known(usage.tokens().inputTokens()) + known(usage.tokens().outputTokens());
     }
 

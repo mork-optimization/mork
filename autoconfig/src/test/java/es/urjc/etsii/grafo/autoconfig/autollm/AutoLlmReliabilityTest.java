@@ -31,19 +31,19 @@ class AutoLlmReliabilityTest {
     @Test void generationEventsAreIncrementalBoundedAndNotCountedTwice() throws Exception {
         Path log = temp.resolve("stdout.log");
         Files.writeString(log, "{\"type\":\"thread.started\",\"thread_id\":\"session\"}\n{\"type\":\"turn.started\"}\n{\"type\":\"item.star");
-        var initial = CodexProgressUtil.refresh(temp); assertEquals("session", initial.threadId); assertEquals(1, initial.turns);
+        var initial = GenerationProgressUtil.refresh(temp); assertEquals("session", initial.sessionId); assertEquals(1, initial.turns);
         assertTrue(Files.exists(temp.resolve("execution/readiness.json")));
         Files.writeString(log, "ted\",\"item\":{\"type\":\"command_execution\",\"command\":\"build\"}}\n", StandardOpenOption.APPEND);
         AutoLlmFileUtil.append(log, Map.of("type", "item.completed", "item", Map.of("type", "command_execution", "command", "build", "aggregated_output", "α".repeat(500_000))));
         AutoLlmFileUtil.append(log, Map.of("type", "item.completed", "item", Map.of("type", "agent_message", "text", "Build completed")));
         AutoLlmFileUtil.append(log, Map.of("type", "turn.completed", "usage", Map.of("output_tokens", 20)));
-        var progress = CodexProgressUtil.refresh(temp); assertEquals(1, progress.commandsStarted); assertEquals(1, progress.commandsCompleted); assertEquals(1, progress.messages); assertEquals("COMPLETED", progress.state);
+        var progress = GenerationProgressUtil.refresh(temp); assertEquals(1, progress.commandsStarted); assertEquals(1, progress.commandsCompleted); assertEquals(1, progress.messages); assertEquals("COMPLETED", progress.state);
         long size = Files.size(temp.resolve("activity.jsonl")); assertTrue(size < 10000);
-        CodexProgressUtil.refresh(temp); assertEquals(size, Files.size(temp.resolve("activity.jsonl")));
+        GenerationProgressUtil.refresh(temp); assertEquals(size, Files.size(temp.resolve("activity.jsonl")));
         assertEquals(Files.size(log), progress.cursor);
     }
     @Test void codexLaunchWithoutSessionHasInfrastructureStartupDeadline() throws Exception {
-        AutoLlmFileUtil.write(temp.resolve("codex-launch.json"), Map.of("startedAt", "now"));
+        AutoLlmFileUtil.write(temp.resolve("generation-launch.json"), Map.of("startedAt", "now"));
         String java = Path.of(System.getProperty("java.home"), "bin/java").toString();
         var command = List.of(java, "-cp", System.getProperty("java.class.path"), AutoLlmChildFixture.class.getName(), "no-session");
         var failure = assertThrows(AutoLlmFailureUtil.StageException.class, () -> new AutoLlmProcessRunner().run(command, temp, temp, 5000, 0, 100, () -> false, false, 300));

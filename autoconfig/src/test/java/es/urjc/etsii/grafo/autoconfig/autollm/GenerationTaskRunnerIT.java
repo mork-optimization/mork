@@ -9,7 +9,7 @@ import java.util.concurrent.CancellationException;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-class CodexTaskRunnerIT {
+class GenerationTaskRunnerIT {
     @TempDir Path temp;
     @ParameterizedTest @ValueSource(strings = {"success", "failure", "timeout", "cancel", "quota", "quota-archive", "capacity", "capacity-archive"})
     void archivesAndAccountsAfterEveryProcessOutcome(String outcome) throws Exception {
@@ -19,28 +19,28 @@ class CodexTaskRunnerIT {
         Files.writeString(cli, "#!/bin/sh\nexport CODEX_HOME='" + home + "'\nexec '" + Path.of(System.getProperty("java.home"), "bin/java") + "' -cp '" + System.getProperty("java.class.path").replace("'", "'\\''") + "' " + AutoLlmCodexFixture.class.getName() + " \"$@\"\n");
         assertTrue(cli.toFile().setExecutable(true));
         var config = new AutoLlmConfig(null, null, null, null, null, null, null, null, null,
-                new AutoLlmConfig.Codex(cli.toString(), null, null, outcome.startsWith("capacity") ? "capacity-fixture" : outcome.startsWith("quota") ? "quota-fixture" : outcome.equals("failure") ? "fail-fixture" : outcome.equals("success") ? null : "hang-fixture", null, null), null, null, null,
+                new AutoLlmConfig.Generation(null, cli.toString(), null, null, outcome.startsWith("capacity") ? "capacity-fixture" : outcome.startsWith("quota") ? "quota-fixture" : outcome.equals("failure") ? "fail-fixture" : outcome.equals("success") ? null : "hang-fixture", null, null), null, null, null,
                 new AutoLlmConfig.Execution(1, 50L, 2000L, 5000L, 5000L, 5000L, 5000L, 5000L, "128m", null, null));
-        var runner = spy(new CodexTaskRunner(new AutoLlmProcessRunner(), new MockEnvironment().withProperty("CODEX_HOME", home.toString())));
+        var runner = spy(new GenerationTaskRunner(new AutoLlmProcessRunner(), new MockEnvironment().withProperty("CODEX_HOME", home.toString())));
         Runnable task = () -> runner.run(config, checkout, output, "custom fixture prompt", null, () -> {
             if (!outcome.equals("cancel")) return false;
             try { return Files.readString(output.resolve("stdout.log")).contains("fixture.ready"); } catch (Exception e) { return false; }
         });
         if (outcome.endsWith("-archive")) {
-            doThrow(new CodexEvidenceUtil.ArchiveException("fixture archive failed", null)).when(runner).archive(any(), any(), any());
-            assertThrows(CodexEvidenceUtil.ArchiveException.class, task::run);
+            doThrow(new GenerationEvidence.ArchiveException("fixture archive failed", null)).when(runner).archive(any(), any(), any());
+            assertThrows(GenerationEvidence.ArchiveException.class, task::run);
             return;
         }
         if (outcome.equals("success")) assertDoesNotThrow(task::run);
         else if (outcome.equals("cancel")) assertThrows(CancellationException.class, task::run);
-        else if (outcome.equals("capacity")) assertThrows(CodexCapacityUtil.CapacityException.class, task::run);
+        else if (outcome.equals("capacity")) assertThrows(GenerationCapacityUtil.CapacityException.class, task::run);
         else if (outcome.equals("quota")) {
-            var quota = assertThrows(CodexQuotaUtil.QuotaLimitException.class, task::run);
+            var quota = assertThrows(GenerationQuotaUtil.QuotaLimitException.class, task::run);
             assertTrue(quota.retryAt().isAfter(java.time.Instant.now().plusSeconds(3000)));
             assertEquals(AutoLlmFailureUtil.Category.QUOTA, AutoLlmFailureUtil.describe(quota, output).category());
         }
         else assertThrows(IllegalStateException.class, task::run);
-        var evidence = AutoLlmFileUtil.read(output.resolve("evidence.json"), CodexEvidenceUtil.Evidence.class);
+        var evidence = AutoLlmFileUtil.read(output.resolve("evidence.json"), GenerationEvidence.Evidence.class);
         assertEquals("ARCHIVED", evidence.status()); assertEquals("COMPLETE", evidence.usage().status()); assertEquals(20L, evidence.usage().tokens().totalTokens());
         String sourceInstructions;
         try (var input = getClass().getResourceAsStream("/autollm/source-instructions.txt")) {
@@ -52,17 +52,17 @@ class CodexTaskRunnerIT {
         var owner = AutoLlmFileUtil.read(output.resolve("owner.json"), java.util.Map.class);
         var command = assertInstanceOf(java.util.List.class, owner.get("command"));
         assertEquals(expectedPrompt, command.getLast());
-        if (config.codex().model() != null) assertEquals(config.codex().model(), command.get(command.indexOf("--model") + 1));
+        if (config.generation().model() != null) assertEquals(config.generation().model(), command.get(command.indexOf("--model") + 1));
         assertFalse(ProcessHandle.of(((Number) owner.get("pid")).longValue()).map(ProcessHandle::isAlive).orElse(false));
         if (outcome.equals("success")) {
             Path resumed = temp.resolve("resumed-attempt");
-            var result = runner.run(config, checkout, resumed, "custom continuation", evidence.threadId(), () -> false);
-            assertEquals(evidence.threadId(), result.threadId());
+            var result = runner.run(config, checkout, resumed, "custom continuation", evidence.sessionId(), () -> false);
+            assertEquals(evidence.sessionId(), result.sessionId());
             String resumedPrompt = "custom continuation\n\n" + sourceInstructions;
             assertEquals(resumedPrompt, Files.readString(resumed.resolve("prompt.txt")));
             var resumedOwner = AutoLlmFileUtil.read(resumed.resolve("owner.json"), java.util.Map.class);
             var resumedCommand = assertInstanceOf(java.util.List.class, resumedOwner.get("command"));
-            assertEquals(evidence.threadId(), resumedCommand.get(resumedCommand.indexOf("resume") + 1));
+            assertEquals(evidence.sessionId(), resumedCommand.get(resumedCommand.indexOf("resume") + 1));
             assertEquals("fixture-model", resumedCommand.get(resumedCommand.indexOf("--model") + 1));
             var selection = AutoLlmFileUtil.read(resumed.resolve("model-selection.json"), java.util.Map.class);
             assertEquals("fixture-model", selection.get("resolvedModel")); assertNull(selection.get("resolvedProvider"));

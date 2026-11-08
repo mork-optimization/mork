@@ -19,7 +19,7 @@ public final class AutoLlmSummaryUtil {
         result.put("comparisonTimePolicy", config.comparison().timeLimitMillis() > 0 ? "EXPLICIT" : "APPLICATION_CALCULATOR");
         result.put("comparisonLimitsResolved", !comparisonLimits.isEmpty()); result.put("comparisonInstanceCount", comparisonLimits.size());
         result.put("comparisonLimitMillis", new TreeSet<>(comparisonLimits.values()));
-        result.put("maxConcurrentSessions", config.codex().maxConcurrentSessions());
+        result.put("maxConcurrentSessions", config.generation().maxConcurrentSessions());
         result.put("requestedWorkers", config.execution().workers()); result.put("effectiveWorkers", host == null ? null : host.effectiveWorkers());
         result.put("tuningEvaluationHours", tuning / 3_600_000);
         result.put("comparisonEvaluationHours", comparisonLimits.isEmpty() ? null : comparison / 3_600_000);

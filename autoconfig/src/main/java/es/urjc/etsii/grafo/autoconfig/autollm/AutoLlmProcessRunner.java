@@ -17,6 +17,11 @@ public class AutoLlmProcessRunner {
     public record Result(int exitCode, boolean plannedDeadline, long elapsedMillis) {}
     public Result run(List<String> command, Path cwd, Path output, long timeoutMillis, long plannedMillis,
                       long graceMillis, BooleanSupplier cancelled, boolean watchEvaluations, long startupMillis) {
+        return run(command, cwd, output, timeoutMillis, plannedMillis, graceMillis, cancelled, watchEvaluations, startupMillis, Map.of(), Set.of(), () -> {});
+    }
+    public Result run(List<String> command, Path cwd, Path output, long timeoutMillis, long plannedMillis,
+                      long graceMillis, BooleanSupplier cancelled, boolean watchEvaluations, long startupMillis,
+                      Map<String,String> environment, Set<String> removeEnvironment, Runnable observe) {
         try {
             Files.createDirectories(output);
             requireTerminated(output);
@@ -27,7 +32,10 @@ public class AutoLlmProcessRunner {
             AutoLlmFileUtil.write(output.resolve("process-intent.json"), Map.of("submission", submission));
             Process process;
             try {
-                process = new ProcessBuilder(command).directory(cwd.toFile())
+                var builder = new ProcessBuilder(command).directory(cwd.toFile());
+                for (String key : removeEnvironment) builder.environment().remove(key);
+                builder.environment().putAll(environment);
+                process = builder
                         .redirectOutput(output.resolve("stdout.log").toFile()).redirectError(output.resolve("stderr.log").toFile()).start();
             } catch (IOException failure) {
                 AutoLlmFileUtil.write(output.resolve("process-terminated.json"), Map.of("submission", submission, "notStarted", true));
@@ -51,7 +59,7 @@ public class AutoLlmProcessRunner {
                         for (var child : children.values()) identities.add(Map.of("pid", child.pid(), "start", child.info().startInstant().map(Instant::toString).orElse("")));
                         AutoLlmFileUtil.write(output.resolve("process-children.json"), Map.of("submission", submission, "children", identities));
                     }
-                    if (Files.exists(output.resolve("codex-launch.json"))) CodexProgressUtil.refresh(output);
+                    observe.run();
                     if (cancelled.getAsBoolean() || AutoLlmCleanup.requested(output) || Thread.currentThread().isInterrupted()) throw new CancellationException("Campaign cancelled");
                     long now = System.currentTimeMillis();
                     if (now - begin > timeoutMillis) throw new IllegalStateException("Stage exceeded its hard timeout");
@@ -71,7 +79,7 @@ public class AutoLlmProcessRunner {
                         }
                     }
                 }
-                if (Files.exists(output.resolve("codex-launch.json"))) CodexProgressUtil.refresh(output);
+                observe.run();
                 AutoLlmFileUtil.unfinished(output, "FAILED", "Child exited with unfinished evaluations");
                 if (process.exitValue() != 0) BuildDiagnostics.capture(cwd, output);
                 return new Result(process.exitValue(), planned, System.currentTimeMillis() - begin);

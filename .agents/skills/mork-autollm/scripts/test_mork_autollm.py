@@ -16,6 +16,23 @@ spec.loader.exec_module(client)
 
 
 class OperatorClientTest(unittest.TestCase):
+    def test_host_agent_is_explicit_and_user_override_wins(self):
+        for override, expected in (({}, "CLAUDE_CODE"), ({"generation": {"agent": "CODEX"}}, "CODEX")):
+            with tempfile.TemporaryDirectory() as root:
+                overrides = Path(root) / "overrides.json"
+                overrides.write_text(json.dumps(override))
+                args = SimpleNamespace(agent="CLAUDE_CODE", overrides=str(overrides), workspace=root, output=str(Path(root) / "config.json"), spring=False)
+                defaults = {"workspace": root, "generation": {"agent": "CODEX", "executable": "codex", "model": "explicit-model"}}
+                def request(base, path, body=None):
+                    if path == "/defaults": return defaults
+                    self.assertEqual(body["generation"]["agent"], expected)
+                    self.assertEqual(body["generation"]["executable"], "codex" if expected == "CODEX" else "claude")
+                    self.assertEqual(body["generation"]["model"], "explicit-model")
+                    return {"configuration": body}
+                with patch.object(client, "request", side_effect=request):
+                    client.configuration(args, "http://localhost")
+
+
     def test_dataset_publication_requires_the_reviewed_digest_and_does_not_launch(self):
         with tempfile.TemporaryDirectory() as self.root:
             config = {"workspace": self.root, "project": {"repository": "/repo", "artifact": "module/target/app.jar"}, "trainingPath": "train.index", "comparisonPath": "test.index"}
@@ -128,7 +145,7 @@ class OperatorClientTest(unittest.TestCase):
             root = Path(temporary)
             overrides = root / "overrides.json"
             overrides.write_text(json.dumps({"execution": {"workers": 32, "ssh": {"host": "server", "configFile": None}}}))
-            args = SimpleNamespace(overrides=overrides, output=root / "remote.yml", spring=True, workspace=root)
+            args = SimpleNamespace(agent=None, overrides=overrides, output=root / "remote.yml", spring=True, workspace=root)
             defaults = {"workspace": str(root), "execution": {"workers": -1, "ssh": {"javaExecutable": "java", "configFile": None}}}
             with patch.object(client, "request", side_effect=[defaults, {"configuration": {"workspace": str(root), "execution": {"workers": 32, "ssh": {"javaExecutable": "java"}}, "canonicalFromServer": True}}]):
                 result = client.configuration(args, "http://localhost")
@@ -143,7 +160,7 @@ class OperatorClientTest(unittest.TestCase):
         with patch.object(client, "request", return_value={"mode": "AUTOLLM", "apiVersion": 1}):
             with self.assertRaisesRegex(RuntimeError, "capabilities"):
                 client.capabilities("http://localhost")
-        info = {"mode": "AUTOLLM", "apiVersion": 8, "checkpointVersion": 8, "runnerProtocol": 8, "workspace": "/other", "features": list(client.FEATURES)}
+        info = {"mode": "AUTOLLM", "apiVersion": 8, "checkpointVersion": 9, "runnerProtocol": 8, "workspace": "/other", "features": list(client.FEATURES)}
         with patch.object(client, "request", return_value=info):
             with self.assertRaisesRegex(RuntimeError, "workspace"):
                 client.capabilities("http://localhost", "/requested")
@@ -154,7 +171,7 @@ class OperatorClientTest(unittest.TestCase):
             jar = root / "app.jar"
             jar.write_bytes(b"frozen executable")
             args = SimpleNamespace(workspace=root, jar=jar, cwd=root, url="http://localhost")
-            info = {"mode": "AUTOLLM", "apiVersion": 8, "checkpointVersion": 8, "runnerProtocol": 8, "workspace": str(root), "workingDirectory": str(root), "features": list(client.FEATURES), "artifactSha256": client.fingerprint(jar)}
+            info = {"mode": "AUTOLLM", "apiVersion": 8, "checkpointVersion": 9, "runnerProtocol": 8, "workspace": str(root), "workingDirectory": str(root), "features": list(client.FEATURES), "artifactSha256": client.fingerprint(jar)}
             with patch.object(client, "request", return_value=info), patch.object(client.subprocess, "Popen") as launch:
                 self.assertEqual(client.backend(args), info)
                 launch.assert_not_called()
@@ -178,7 +195,7 @@ class OperatorClientTest(unittest.TestCase):
             jar = root / "app.jar"
             jar.write_bytes(b"executable")
             args = SimpleNamespace(workspace=root, jar=jar, cwd=root, url=None, java="java", port=0, timeout=10)
-            ready = {"pid": 12345, "mode": "AUTOLLM", "apiVersion": 8, "checkpointVersion": 8, "runnerProtocol": 8, "workspace": str(root), "workingDirectory": str(root), "features": list(client.FEATURES), "artifactSha256": client.fingerprint(jar)}
+            ready = {"pid": 12345, "mode": "AUTOLLM", "apiVersion": 8, "checkpointVersion": 9, "runnerProtocol": 8, "workspace": str(root), "workingDirectory": str(root), "features": list(client.FEATURES), "artifactSha256": client.fingerprint(jar)}
             launching = dict(ready, mode="STARTING")
             with patch.object(client, "request", side_effect=[RuntimeError("offline"), launching, ready]), patch.object(client.socket, "socket") as socket, patch.object(client.subprocess, "Popen") as launch, patch.object(client.time, "sleep"):
                 socket.return_value.__enter__.return_value.getsockname.return_value = ("127.0.0.1", 18081)

@@ -21,7 +21,7 @@ class AutoLlmDatasetLibraryTest {
     }
     private Path input(String name) throws Exception { Path path = temp.resolve(name); Files.createDirectories(path.getParent()); return Files.writeString(path, name); }
     private AutoLlmCampaignService service(AutoLlmConfig c, InstanceConfiguration instances) {
-        return new AutoLlmCampaignService(c, new AutoLlmCampaignStore(c), mock(AutoLlmProcessRunner.class), mock(CodexTaskRunner.class), mock(AutoLlmReportService.class), instances);
+        return new AutoLlmCampaignService(c, new AutoLlmCampaignStore(c), mock(AutoLlmProcessRunner.class), mock(GenerationTaskRunner.class), mock(AutoLlmReportService.class), instances);
     }
 
     @Test void publishesExactIndependentOrdersAndCopiesArchiveContainerOnce() throws Exception {

@@ -85,7 +85,7 @@ class AutoLlmStorageEstimateTest {
         var amended = AutoLlmStorageEstimate.estimate(campaign, root, campaign.config.withTrials(5), (config, target, state) -> capacity(Long.MAX_VALUE));
         assertEquals(1, amended.remainingTrials()); assertTrue(amended.controller().additionalPeak().highBytes() > 0);
         var c = campaign.config;
-        var larger = new AutoLlmConfig(c.project(), c.workspace(), 5, c.seed(), c.maxParameters(), c.sotaFile(), c.initialConfigurationsFile(), c.trainingPath(), c.comparisonPath(), c.codex(), c.preparation(),
+        var larger = new AutoLlmConfig(c.project(), c.workspace(), 5, c.seed(), c.maxParameters(), c.sotaFile(), c.initialConfigurationsFile(), c.trainingPath(), c.comparisonPath(), c.generation(), c.preparation(),
                 new AutoLlmConfig.Tuning(1_000_000, null, null, null), c.comparison(), c.execution());
         var increased = AutoLlmStorageEstimate.estimate(campaign, root, larger, (config, target, state) -> capacity(Long.MAX_VALUE));
         assertTrue(increased.controller().breakdown().get("retainedEvidenceAndSourcePatches").highBytes() > amended.controller().breakdown().get("retainedEvidenceAndSourcePatches").highBytes());
@@ -104,7 +104,7 @@ class AutoLlmStorageEstimateTest {
         var estimate = AutoLlmStorageEstimate.estimate(campaign, root, campaign.config, (config, target, state) -> capacity(Long.MAX_VALUE));
         assertEquals(1, estimate.sizingBasis().get("sampledEvaluations")); assertTrue(estimate.sizingBasis().get("observedBytesPerEvaluation") > 50000);
         var c = campaign.config; var p = c.project();
-        var timing = new AutoLlmConfig(new AutoLlmConfig.Project(p.repository(), p.ref(), p.buildCommand(), p.artifact(), List.of("--solver.time-stats=true")), c.workspace(), c.trials(), c.seed(), c.maxParameters(), c.sotaFile(), c.initialConfigurationsFile(), c.trainingPath(), c.comparisonPath(), c.codex(), c.preparation(), c.tuning(), c.comparison(), c.execution());
+        var timing = new AutoLlmConfig(new AutoLlmConfig.Project(p.repository(), p.ref(), p.buildCommand(), p.artifact(), List.of("--solver.time-stats=true")), c.workspace(), c.trials(), c.seed(), c.maxParameters(), c.sotaFile(), c.initialConfigurationsFile(), c.trainingPath(), c.comparisonPath(), c.generation(), c.preparation(), c.tuning(), c.comparison(), c.execution());
         var detailed = AutoLlmStorageEstimate.estimate(campaign, root, timing, (config, target, state) -> capacity(Long.MAX_VALUE));
         assertTrue(detailed.controller().additionalPeak().highBytes() > estimate.controller().additionalPeak().highBytes());
     }

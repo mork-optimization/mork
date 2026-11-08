@@ -21,16 +21,16 @@ class AutoLlmCapacityWaitTest {
         var original = new AutoLlmCampaign(); original.id = "capacity-fixture";
         original.config = new AutoLlmConfig(null, temp.toString(), 1, null, null, null, null, null, null, null, null, null, null, null);
         var trial = new AutoLlmCampaign.Trial(); trial.number = 1; trial.status = AutoLlmCampaign.TrialStatus.INTERRUPTED;
-        trial.threadId = "saved-conversation"; trial.resumeTurn = true; trial.repairPending = true;
-        trial.capacityWait = CodexCapacityUtil.schedule(null, "capacity", java.time.Clock.systemUTC(), () -> 0);
+        trial.sessionId = "saved-conversation"; trial.resumeTurn = true; trial.repairPending = true;
+        trial.capacityWait = GenerationCapacityUtil.schedule(null, "capacity", java.time.Clock.systemUTC(), () -> 0);
         var attempt = new AutoLlmCampaign.Attempt(); attempt.stage = AutoLlmCampaign.AttemptStage.REPAIR; attempt.status = AutoLlmCampaign.AttemptStatus.CAPACITY_LIMIT;
         attempt.directory = "trials/001/attempts/001-repair"; trial.attempts.add(attempt); original.trials.add(trial);
         Path checkpoint = temp.resolve("checkpoint.json");
         AutoLlmFileUtil.write(checkpoint, original);
         var restored = AutoLlmFileUtil.read(checkpoint, AutoLlmCampaign.class);
-        var codex = mock(CodexTaskRunner.class);
-        when(codex.archive(any(), any(), eq(trial.threadId))).thenReturn(
-                new CodexEvidenceUtil.Evidence("ARCHIVED", trial.threadId, List.of(), null, null));
+        var codex = mock(GenerationTaskRunner.class);
+        when(codex.archive(any(), any(), eq(trial.sessionId))).thenReturn(
+                new GenerationEvidence.Evidence("ARCHIVED", trial.sessionId, List.of(), null, null));
         var permits = new Semaphore(1); var cancel = new AtomicBoolean(); var waiting = new CountDownLatch(1);
         var context = new AutoLlmExecutionContext(restored.id, "", temp, restored.prompt);
         context.config = restored.config; context.trial = restored.trials.getFirst();
@@ -53,7 +53,7 @@ class AutoLlmCapacityWaitTest {
             assertTrue(waiting.await(10, TimeUnit.SECONDS));
             var saved = AutoLlmFileUtil.read(checkpoint, AutoLlmCampaign.class).trials.getFirst();
             assertEquals("WAITING_FOR_CAPACITY", saved.status.name()); assertEquals(trial.capacityWait, saved.capacityWait);
-            assertEquals(trial.threadId, saved.threadId); assertTrue(saved.repairPending);
+            assertEquals(trial.sessionId, saved.sessionId); assertTrue(saved.repairPending);
             assertEquals(1, permits.availablePermits());
             if (interrupt) worker.interrupt(); else { cancel.set(true); releaseWait.countDown(); }
             task.get(5, TimeUnit.SECONDS);

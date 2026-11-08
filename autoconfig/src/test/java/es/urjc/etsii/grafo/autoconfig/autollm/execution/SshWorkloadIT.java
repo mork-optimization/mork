@@ -57,7 +57,7 @@ class SshWorkloadIT {
         Files.writeString(workerJava, "#!/bin/sh\nexec " + WorkloadPathUtil.quote(java) + " \"$@\"\n");
         assertTrue(workerJava.toFile().setExecutable(true));
         var defaults = AutoLlmConfig.defaults();
-        config = new AutoLlmConfig(defaults.project(), temp.resolve("controller").toString(), 1, 1234L, 299, null, null, null, null, defaults.codex(), defaults.preparation(), defaults.tuning(), defaults.comparison(),
+        config = new AutoLlmConfig(defaults.project(), temp.resolve("controller").toString(), 1, 1234L, 299, null, null, null, null, defaults.generation(), defaults.preparation(), defaults.tuning(), defaults.comparison(),
                 new AutoLlmConfig.Execution(32, 100L, 30000L, 30000L, 5000L, 5000L, 30000L, 30000L, "128m", AutoLlmConfig.Target.SSH,
                         new AutoLlmConfig.Ssh("fixture", runner.toString(), List.of(new AutoLlmConfig.Server("fixture", "mork-fixture", temp.resolve("remote workspace").toString(), workerJava.toString(), Map.of(), ssh.toString(), null, null)), new AutoLlmConfig.Reconnect(10L, 40L, 200L))));
         root = temp.resolve("local mirror").toAbsolutePath(); Files.createDirectories(root);
@@ -176,8 +176,8 @@ class SshWorkloadIT {
     @Test void interruptedScreeningCancellationUsesItsPersistedSingleServer() throws Exception {
         var execution = config.execution(); var ssh = execution.ssh();
         var pool = new AutoLlmConfig(config.project(), temp.resolve("campaigns").toString(), 1, config.seed(), config.maxParameters(), null, null, null, null,
-                config.codex(), config.preparation(), config.tuning(), config.comparison(),
-                new AutoLlmConfig.Execution(execution.workers(), execution.watchdogGraceMillis(), execution.codexTimeoutMillis(), execution.buildTimeoutMillis(), execution.startupTimeoutMillis(), execution.searchSpaceTimeoutMillis(), execution.phaseTimeoutMillis(), execution.stageTimeoutMillis(), execution.heap(), AutoLlmConfig.Target.SSH,
+                config.generation(), config.preparation(), config.tuning(), config.comparison(),
+                new AutoLlmConfig.Execution(execution.workers(), execution.watchdogGraceMillis(), execution.generationTimeoutMillis(), execution.buildTimeoutMillis(), execution.startupTimeoutMillis(), execution.searchSpaceTimeoutMillis(), execution.phaseTimeoutMillis(), execution.stageTimeoutMillis(), execution.heap(), AutoLlmConfig.Target.SSH,
                         new AutoLlmConfig.Ssh(ssh.screeningServerId(), ssh.runnerArtifact(), List.of(ssh.onlyServer(), new AutoLlmConfig.Server("other", "unreachable-fixture", "/unused", "java", Map.of(), null, null, null)), null)));
         var store = new AutoLlmCampaignStore(pool);
         var job = new es.urjc.etsii.grafo.autoconfig.screening.ScreeningJobService.Job(); job.id = UUID.randomUUID().toString(); job.status = es.urjc.etsii.grafo.autoconfig.screening.ScreeningJobService.ScreeningStatus.INTERRUPTED;

@@ -33,7 +33,7 @@ class AutoLlmPoolTest {
         Path input = temp.resolve("input.txt"); Files.writeString(input, "same payload");
         Path runner = temp.resolve("runner.jar"); Files.writeString(runner, "fixture");
         var definitions = new ArrayList<AutoLlmConfig.Server>(); for (String id : ids) definitions.add(server(id));
-        var config = new AutoLlmConfig(null, temp.toString(), trials, null, null, null, null, input.toString(), input.toString(), new AutoLlmConfig.Codex(null, null, null, "fixture-model", null, null), null, null, null,
+        var config = new AutoLlmConfig(null, temp.toString(), trials, null, null, null, null, input.toString(), input.toString(), new AutoLlmConfig.Generation(null, null, null, null, "fixture-model", null, null), null, null, null,
                 new AutoLlmConfig.Execution(2, null, null, null, null, null, null, null, null, AutoLlmConfig.Target.SSH, new AutoLlmConfig.Ssh(ids[0], runner.toString(), definitions, null)));
         store = spy(new AutoLlmCampaignStore(config)); campaign = new AutoLlmCampaign(); campaign.id = UUID.randomUUID().toString(); campaign.createdAt = "2026-10-22"; campaign.config = config; campaign.baselineCommit = "fixed";
         for (String id : ids) { var t = new AutoLlmCampaign.TargetState(); t.definition = server(id); t.directory = "targets/" + id; t.revision = ++campaign.poolRevision; t.baselineReady = true; t.resolvedConfig = config.forServer(t.definition); campaign.targets.put(id, t); }
@@ -56,7 +56,7 @@ class AutoLlmPoolTest {
             Path artifact = root.resolve("baseline/source").resolve(config.project().artifact()); Files.createDirectories(artifact.getParent()); Files.writeString(artifact, "fixture");
         }
         store.save(campaign);
-        service = new AutoLlmCampaignService(config, store, new AutoLlmProcessRunner(), mock(CodexTaskRunner.class), mock(AutoLlmReportService.class), new InstanceConfiguration()) {
+        service = new AutoLlmCampaignService(config, store, new AutoLlmProcessRunner(), mock(GenerationTaskRunner.class), mock(AutoLlmReportService.class), new InstanceConfiguration()) {
             @Override protected AutoLlmTrialRunner runner(AutoLlmExecutionContext model, Path root, AutoLlmTrialRunner.Listener listener, BooleanSupplier stop, Semaphore sessions) {
                 String id = model.trial == null ? root.getFileName().toString() : model.trial.targetId; var runner = mock(AutoLlmTrialRunner.class);
                 when(runner.snapshot()).thenAnswer(_ -> model.snapshot());
@@ -290,18 +290,18 @@ class AutoLlmPoolTest {
         setup(1, "a");
         try {
             var config = AutoLlmFileUtil.JSON.valueToTree(campaign.config);
-            var codex = (tools.jackson.databind.node.ObjectNode) config.path("codex");
+            var codex = (tools.jackson.databind.node.ObjectNode) config.path("generation");
             codex.putNull("model"); campaign.config = AutoLlmFileUtil.JSON.treeToValue(config, AutoLlmConfig.class); store.save(campaign);
             var implicit = service.proposal(campaign.id);
             assertFalse(implicit.generation().ready()); assertNull(implicit.generation().model());
             assertTrue(implicit.generation().approvalLine().contains("NOT SELECTED"));
-            assertTrue(assertThrows(IllegalStateException.class, () -> service.approve(campaign.id, implicit.digest())).getMessage().contains("codex.model"));
+            assertTrue(assertThrows(IllegalStateException.class, () -> service.approve(campaign.id, implicit.digest())).getMessage().contains("generation.model"));
             campaign.approvedProposal = implicit.digest(); store.save(campaign);
             assertThrows(IllegalStateException.class, () -> service.start(campaign.id, false, Set.of()));
             codex.put("model", "chosen-model"); campaign.config = AutoLlmFileUtil.JSON.treeToValue(config, AutoLlmConfig.class); store.save(campaign);
             var explicit = service.proposal(campaign.id);
             assertTrue(explicit.generation().ready()); assertEquals("chosen-model", explicit.generation().model());
-            assertTrue(explicit.generation().approvalLine().contains("reasoning effort Codex default (not pinned)"));
+            assertTrue(explicit.generation().approvalLine().contains("reasoning effort agent default (not pinned)"));
             service.approve(campaign.id, explicit.digest());
             codex.put("model", "different-model"); codex.put("reasoningEffort", "high");
             campaign.config = AutoLlmFileUtil.JSON.treeToValue(config, AutoLlmConfig.class); store.save(campaign);
@@ -309,7 +309,7 @@ class AutoLlmPoolTest {
             assertEquals("high", changed.generation().reasoningEffort()); assertTrue(changed.generation().approvalLine().contains("high (campaign setting)"));
             var failure = assertThrows(AutoLlmNormalization.ApprovalMismatch.class, () -> service.approve(campaign.id, explicit.digest()));
             var paths = new HashSet<String>(); for (var difference : failure.differences) paths.add(difference.path());
-            assertEquals(Set.of("configuration.codex.model", "configuration.codex.reasoningEffort"), paths);
+            assertEquals(Set.of("configuration.generation.model", "configuration.generation.reasoningEffort"), paths);
         } finally { service.close(); }
     }
     @Test void approvalReportsExactBudgetSeedDatasetAndWorkerChanges() throws Exception {

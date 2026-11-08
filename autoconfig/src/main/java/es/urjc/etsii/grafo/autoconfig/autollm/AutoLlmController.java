@@ -59,7 +59,7 @@ public class AutoLlmController {
         result.put("artifact", artifact == null ? null : artifact.getAbsolutePath());
         result.put("artifactSha256", artifactSha256);
         result.put("baseUrl", "http://127.0.0.1:" + environment.getProperty("local.server.port", environment.getProperty("server.port", "8080")));
-        result.put("features", List.of("LOCAL", "SSH", "SCREENING_JOBS", "DATASET_LIBRARY", "CODEX_PROGRESS", "BYTE_LOG_CURSORS", "STRUCTURED_FAILURES", "SSH_SERVER_POOL", "DYNAMIC_TARGETS", "FAIL_BLOCKED_TRIAL", "RECOVERY_ACTIONS", "FILE_TAIL_PREVIEWS", "ASYNC_TARGET_PREFLIGHT", "COMPACT_OBSERVATIONS", "CAMPAIGN_APPROVAL", "REMOTE_INSPECTION", "CANONICAL_CONFIG", "WORKSPACE_LOCKS", "SCOPED_CLEANUP", "LOCAL_JOB_RECOVERY"));
+        result.put("features", List.of("LOCAL", "SSH", "SCREENING_JOBS", "DATASET_LIBRARY", "GENERATION_PROGRESS", "BYTE_LOG_CURSORS", "STRUCTURED_FAILURES", "SSH_SERVER_POOL", "DYNAMIC_TARGETS", "FAIL_BLOCKED_TRIAL", "RECOVERY_ACTIONS", "FILE_TAIL_PREVIEWS", "ASYNC_TARGET_PREFLIGHT", "COMPACT_OBSERVATIONS", "CAMPAIGN_APPROVAL", "REMOTE_INSPECTION", "CANONICAL_CONFIG", "WORKSPACE_LOCKS", "SCOPED_CLEANUP", "LOCAL_JOB_RECOVERY"));
         return result;
     }
     /** Ordered objective definitions, shared with the experiment monitor. */
@@ -136,7 +136,7 @@ public class AutoLlmController {
     }
     @GetMapping("/campaigns/{id}/summary") public Object summary(@PathVariable String id) {
         var campaign = store.load(id); var result = new LinkedHashMap<String,Object>();
-        result.put("poolRevision", campaign.poolRevision); result.put("maxConcurrentSessions", campaign.config.codex().maxConcurrentSessions());
+        result.put("poolRevision", campaign.poolRevision); result.put("maxConcurrentSessions", campaign.config.generation().maxConcurrentSessions());
         var targets = new LinkedHashMap<String,Object>(); Map<String,Long> sharedBudgets = Map.of();
         for (var entry : campaign.targets.entrySet()) {
             var target = entry.getValue(); Path budgets = store.directory(id).resolve(target.directory).resolve("control/comparison-time-limits.json");
@@ -243,7 +243,7 @@ public class AutoLlmController {
                 Path remote = directory.resolve("remote-status.json");
                 if (attempt.substage != null) remote = directory.resolve(switch (attempt.substage) { case BUILD -> "build"; case METADATA -> "check"; case PROBES -> "probe"; case PILOT -> "pilot"; default -> ""; }).resolve("remote-status.json");
                 if (Files.exists(remote)) progress.put("remote", AutoLlmFileUtil.read(remote, Object.class));
-                if (attempt.stage.generation()) progress.put("generation", CodexProgressUtil.refresh(directory));
+                if (attempt.stage.generation()) progress.put("generation", GenerationProgressUtil.refresh(directory));
                 for (String name : List.of("execution/tuning-progress.json", "pilot/execution/tuning-progress.json", "execution/tuning-status.json", "probe/execution/probes.json")) {
                     if (Files.exists(directory.resolve(name))) {
                         var value = AutoLlmFileUtil.read(directory.resolve(name), tools.jackson.databind.JsonNode.class);
@@ -317,7 +317,7 @@ public class AutoLlmController {
     @GetMapping("/campaigns/{id}/trials/{number}/activity") public AutoLlmLogUtil.Page activity(@PathVariable String id, @PathVariable int number,
             @RequestParam int attempt, @RequestParam(defaultValue = "0") long cursor) {
         for (var trial : store.status(id).trials) if (trial.number == number) for (var candidate : trial.attempts) if (candidate.number == attempt && candidate.stage.generation()) {
-            Path directory = store.directory(id).resolve(candidate.directory); CodexProgressUtil.refresh(directory);
+            Path directory = store.directory(id).resolve(candidate.directory); GenerationProgressUtil.refresh(directory);
             Path file = directory.resolve("activity.jsonl");
             if (cursor == -1 && AutoLlmEvidenceFiles.exists(file)) {
                 try {

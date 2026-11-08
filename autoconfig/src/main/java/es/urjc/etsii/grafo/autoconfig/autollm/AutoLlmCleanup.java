@@ -124,7 +124,7 @@ public final class AutoLlmCleanup {
         if (selection.shutdown() && !selection.kind().equals("workspace")) blockers.add("Controller shutdown requires complete workspace scope");
         // Unknown native threads cannot be silently omitted from complete deletion.
         for (var resource : delete) if (resource.kind().equals("campaign")) {
-            for (Path thread : AutoLlmFileUtil.ownedFiles(Path.of(resource.path()), "thread-id.txt")) {
+            for (Path thread : AutoLlmFileUtil.ownedFiles(Path.of(resource.path()), "session-id.txt")) {
                 try {
                     String id = Files.readString(thread).strip(); boolean found = false;
                     for (var nativeResource : resources) if (id.equals(nativeResource.sessionId())) found = true;

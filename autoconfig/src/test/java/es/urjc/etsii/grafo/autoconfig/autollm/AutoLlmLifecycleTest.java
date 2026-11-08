@@ -42,6 +42,8 @@ class AutoLlmLifecycleTest {
         var lost = new AutoLlmCampaign.Trial(); lost.number = 4; lost.status = AutoLlmCampaign.TrialStatus.GENERATION;
         var missing = new AutoLlmCampaign.Attempt(); missing.stage = AutoLlmCampaign.AttemptStage.GENERATION; missing.directory = "trials/004/attempts/001-generation"; lost.attempts.add(missing); campaign.trials.add(lost); store.save(campaign);
         AutoLlmFileUtil.append(store.directory(campaign.id).resolve(missing.directory).resolve("stdout.log"), Map.of("type", "thread.started", "thread_id", UUID.randomUUID().toString()));
+        AutoLlmFileUtil.write(log.getParent().resolve("generation-launch.json"), Map.of("agent", "CODEX"));
+        AutoLlmFileUtil.write(store.directory(campaign.id).resolve(missing.directory).resolve("generation-launch.json"), Map.of("agent", "CODEX"));
         var runner = new AutoLlmProcessRunner();
         var service = new AutoLlmCampaignService(settings, store, runner, codex(runner), mock(AutoLlmReportService.class), new InstanceConfiguration());
         try {
@@ -56,15 +58,15 @@ class AutoLlmLifecycleTest {
                 task.reconcile();
             }
             assertEquals("SUCCEEDED", recovered.trials.getFirst().status.name()); assertEquals("INTERRUPTED", recovered.trials.get(1).attempts.getFirst().status.name());
-            assertEquals(thread, recovered.trials.get(2).threadId); assertTrue(recovered.trials.get(2).resumeTurn); assertEquals(0, recovered.trials.get(2).repairTurns);
-            assertEquals("ARCHIVED", recovered.trials.get(2).attempts.getFirst().codexEvidence.status());
+            assertEquals(thread, recovered.trials.get(2).sessionId); assertTrue(recovered.trials.get(2).resumeTurn); assertEquals(0, recovered.trials.get(2).repairTurns);
+            assertEquals("ARCHIVED", recovered.trials.get(2).attempts.getFirst().generationEvidence.status());
             assertEquals("BLOCKED", recovered.trials.get(3).status.name()); assertFalse(recovered.trials.get(3).resumeTurn);
-            assertEquals("FAILED", recovered.trials.get(3).attempts.getFirst().codexEvidence.status());
+            assertEquals("FAILED", recovered.trials.get(3).attempts.getFirst().generationEvidence.status());
             try (var lock = store.lock()) {
                 assertTrue(lock.lock().isValid());
                 assertThrows(IllegalStateException.class, store::lock);
             }
         } finally { service.close(); }
     }
-    private CodexTaskRunner codex(AutoLlmProcessRunner runner) { return new CodexTaskRunner(runner, new MockEnvironment().withProperty("CODEX_HOME", temp.resolve("codex-home").toString())); }
+    private GenerationTaskRunner codex(AutoLlmProcessRunner runner) { return new GenerationTaskRunner(runner, new MockEnvironment().withProperty("CODEX_HOME", temp.resolve("codex-home").toString())); }
 }

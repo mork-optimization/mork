@@ -25,7 +25,7 @@ class SshReconnectTest {
         var defaults = AutoLlmConfig.defaults();
         var server = new AutoLlmConfig.Server("test", "unused", "/work", "java", Map.of(), null, null, null);
         return new AutoLlmConfig(defaults.project(), root.toString(), 1, null, null, null, null, null, null,
-                defaults.codex(), defaults.preparation(), defaults.tuning(), defaults.comparison(),
+                defaults.generation(), defaults.preparation(), defaults.tuning(), defaults.comparison(),
                 new AutoLlmConfig.Execution(null, null, null, null, null, null, null, null, null, AutoLlmConfig.Target.SSH,
                         new AutoLlmConfig.Ssh("test", "unused.jar", List.of(server), new AutoLlmConfig.Reconnect(60_000L, 60_000L, 120_000L))));
     }

@@ -107,7 +107,8 @@ export interface AutoLlmConfig {
   initialConfigurationsFile: string | null;
   trainingPath: string | null;
   comparisonPath: string | null;
-  codex: {
+  generation: {
+    agent: 'CODEX' | 'CLAUDE_CODE';
     executable: string;
     promptFile: string | null;
     prompt: string | null;
@@ -141,7 +142,7 @@ export interface AutoLlmConfig {
       reconnect?: { initialDelayMillis: number; maximumDelayMillis: number; budgetMillis: number };
     } | null;
     watchdogGraceMillis: number;
-    codexTimeoutMillis: number;
+    generationTimeoutMillis: number;
     buildTimeoutMillis: number;
     startupTimeoutMillis: number;
     searchSpaceTimeoutMillis: number;
@@ -160,14 +161,14 @@ export interface AutoLlmAttempt {
   failure: string | null;
   problem?: AutoLlmFailure | null;
   substage?: AutoLlmPreparationStage | null;
-  codexEvidence?: {
+  generationEvidence?: {
     status: string;
-    threadId: string | null;
+    sessionId: string | null;
     failure: string | null;
-    usage: CodexUsage;
+    usage: GenerationUsage;
     conversations: {
-      threadId: string;
-      parentThreadId: string | null;
+      sessionId: string;
+      parentSessionId: string | null;
       path: string;
       sha256: string;
       cliVersion: string | null;
@@ -175,7 +176,7 @@ export interface AutoLlmAttempt {
     }[];
   } | null;
 }
-export interface CodexUsage {
+export interface GenerationUsage {
   status: 'NOT_STARTED' | 'COMPLETE' | 'PARTIAL' | 'UNAVAILABLE';
   tokens: {
     inputTokens: number | null;
@@ -211,11 +212,11 @@ export interface AutoLlmTrial {
   comparisonSeed: number;
   status: AutoLlmTrialStatus;
   failure: string | null;
-  threadId: string | null;
+  sessionId: string | null;
   repairTurns: number;
   winner: unknown | null;
   attempts: AutoLlmAttempt[];
-  codexUsage?: CodexUsage | null;
+  generationUsage?: GenerationUsage | null;
   problem?: AutoLlmFailure | null;
   infrastructureRetries?: number;
   quotaRetryAt?: string | null;
@@ -242,7 +243,7 @@ export interface AutoLlmCampaign {
   targets: Record<string, AutoLlmTarget>;
   reportFailure?: string | null;
   reportUpdatedAt?: string | null;
-  codexUsage?: CodexUsage | null;
+  generationUsage?: GenerationUsage | null;
   problem?: AutoLlmFailure | null;
   executionHost?: {
     requestedWorkers: number;
@@ -300,9 +301,9 @@ export interface AutoLlmFailure {
   retryable: boolean;
   recovery: string;
 }
-export interface CodexProgress {
+export interface GenerationProgress {
   state: string;
-  threadId: string | null;
+  sessionId: string | null;
   lastActivityAt: string | null;
   turns: number;
   commandsStarted: number;
@@ -333,7 +334,7 @@ export interface AutoLlmProgress {
     retries: number;
     diagnostic: string;
   } | null;
-  generation?: CodexProgress;
+  generation?: GenerationProgress;
   workload?: Record<string, unknown>;
   remote?: AutoLlmCampaign['remote'];
 }
@@ -410,6 +411,7 @@ export interface ApprovalDifference {
   current: unknown;
 }
 export interface GenerationSettings {
+  agent: 'CODEX' | 'CLAUDE_CODE';
   model: string | null;
   reasoningEffort: string | null;
   ready: boolean;

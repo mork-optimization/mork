@@ -9,7 +9,7 @@ final class AutoLlmReportMetrics {
     record Gap(long start, long end) {}
     record Timeline(AutoLlmPortableReport.Trial trial, List<Span> spans, List<Gap> gaps,
                     Long start, Long end, int lanes) {}
-    record UsageStage(String name, CodexEvidenceUtil.Summary usage, long knownMillis, int unknownDurations) {}
+    record UsageStage(String name, GenerationEvidence.Summary usage, long knownMillis, int unknownDurations) {}
     record FailureKey(String stage, String outcome, String category, String code) {}
     record FailureGroup(FailureKey key, int attempts, Set<Integer> trials) {}
 
@@ -50,9 +50,9 @@ final class AutoLlmReportMetrics {
             if (!attempt.saved().stage.generation()) continue;
             var group = attempt.saved().stage == AutoLlmCampaign.AttemptStage.REPAIR ? repair : generation;
             if (attempt.millis() == null) group.unknown++; else group.millis += attempt.millis();
-            CodexEvidenceUtil.Usage usage = null;
+            GenerationEvidence.Usage usage = null;
             try {
-                if (attempt.usage() != null) usage = AutoLlmFileUtil.JSON.treeToValue(attempt.usage(), CodexEvidenceUtil.Usage.class);
+                if (attempt.usage() != null) usage = AutoLlmFileUtil.JSON.treeToValue(attempt.usage(), GenerationEvidence.Usage.class);
                 if (usage != null && (usage.summary() == null || usage.summary().status() == null || usage.entries() == null)) usage = null;
                 if (usage != null) for (var entry : usage.entries()) {
                     if (entry.key() == null || entry.tokens() == null) { usage = null; break; }
@@ -72,22 +72,22 @@ final class AutoLlmReportMetrics {
 
     private static final class UsageGroup {
         final String name;
-        final List<CodexEvidenceUtil.Entry> entries = new ArrayList<>();
+        final List<GenerationEvidence.Entry> entries = new ArrayList<>();
         final Long[] zeroKnown = new Long[6];
         int complete, partial, unavailable, unknown;
         long millis;
         boolean hasEntries;
         UsageGroup(String name) { this.name = name; }
-        void observe(CodexEvidenceUtil.Tokens tokens) {
+        void observe(GenerationEvidence.Tokens tokens) {
             var values = Arrays.asList(tokens.inputTokens(), tokens.cachedInputTokens(), tokens.cacheWriteInputTokens(), tokens.outputTokens(), tokens.reasoningOutputTokens(), tokens.totalTokens());
             for (int i = 0; i < values.size(); i++) if (values.get(i) != null) zeroKnown[i] = 0L;
         }
         UsageStage result() {
-            var summary = CodexEvidenceUtil.aggregate(entries, complete, partial, unavailable);
+            var summary = GenerationEvidence.aggregate(entries, complete, partial, unavailable);
             if (entries.isEmpty() && hasEntries) {
                 // Known responses were all charged to an earlier attempt; their additional usage is zero.
-                summary = new CodexEvidenceUtil.Summary(partial + unavailable == 0 ? "COMPLETE" : "PARTIAL",
-                        new CodexEvidenceUtil.Tokens(zeroKnown[0], zeroKnown[1], zeroKnown[2], zeroKnown[3], zeroKnown[4], zeroKnown[5]), complete + partial + unavailable,
+                summary = new GenerationEvidence.Summary(partial + unavailable == 0 ? "COMPLETE" : "PARTIAL",
+                        new GenerationEvidence.Tokens(zeroKnown[0], zeroKnown[1], zeroKnown[2], zeroKnown[3], zeroKnown[4], zeroKnown[5]), complete + partial + unavailable,
                         complete, partial, unavailable);
             }
             return new UsageStage(name, summary, millis, unknown);
@@ -109,12 +109,12 @@ final class AutoLlmReportMetrics {
         return result;
     }
 
-    static String total(CodexEvidenceUtil.Summary usage) {
+    static String total(GenerationEvidence.Summary usage) {
         if (usage == null) return "Unavailable";
         String total = usage.tokens() == null ? "Unavailable" : Objects.toString(usage.tokens().totalTokens(), "Unavailable");
         return total + " · " + usage.status();
     }
-    static String coverage(CodexEvidenceUtil.Summary usage) {
+    static String coverage(GenerationEvidence.Summary usage) {
         if (usage == null) return "Unavailable";
         return usage.completeAttempts() + "/" + usage.attempts() + " complete; " + usage.partialAttempts() + " partial; "
                 + usage.unavailableAttempts() + " unavailable";

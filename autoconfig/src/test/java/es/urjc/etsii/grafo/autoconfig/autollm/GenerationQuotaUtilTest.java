@@ -12,7 +12,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class CodexQuotaUtilTest {
+class GenerationQuotaUtilTest {
     @TempDir Path temp;
     private static final Instant STARTED = Instant.parse("2026-10-24T14:00:00Z");
     private static final Instant NOW = STARTED.plusSeconds(60);
@@ -21,15 +21,15 @@ class CodexQuotaUtilTest {
     private void error(String message) {
         AutoLlmFileUtil.append(temp.resolve("stdout.log"), Map.of("type", "turn.failed", "error", Map.of("message", message)));
     }
-    private CodexQuotaUtil.QuotaLimitException detect() {
-        return CodexQuotaUtil.detect(temp, STARTED, NOW, ZoneId.of("Europe/Madrid"));
+    private GenerationQuotaUtil.QuotaLimitException detect() {
+        return GenerationQuotaUtil.detect(temp, STARTED, NOW, ZoneId.of("Europe/Madrid"));
     }
     private Map<String, Object> window(double used, Instant reset) {
         return Map.of("used_percent", used, "resets_at", reset.getEpochSecond());
     }
     private void limits(Map<String, Object> limits) {
-        AutoLlmFileUtil.write(temp.resolve("evidence.json"), Map.of("threadId", "saved-thread", "conversations",
-                List.of(Map.of("threadId", "saved-thread", "path", "native.jsonl"))));
+        AutoLlmFileUtil.write(temp.resolve("evidence.json"), Map.of("sessionId", "saved-thread", "conversations",
+                List.of(Map.of("sessionId", "saved-thread", "path", "native.jsonl"))));
         AutoLlmFileUtil.append(temp.resolve("native.jsonl"), Map.of("type", "event_msg", "payload",
                 Map.of("type", "token_count", "rate_limits", limits)));
     }
@@ -59,7 +59,7 @@ class CodexQuotaUtilTest {
     @Test void handlesResetTimesAfterMidnight() {
         error(MESSAGE + " Please try again at 12:05 AM.");
         var started = Instant.parse("2026-10-24T21:00:00Z");
-        var limit = CodexQuotaUtil.detect(temp, started, started.plusSeconds(60), ZoneId.of("Europe/Madrid"));
+        var limit = GenerationQuotaUtil.detect(temp, started, started.plusSeconds(60), ZoneId.of("Europe/Madrid"));
         assertEquals(Instant.parse("2026-10-24T22:05:02Z"), limit.retryAt());
     }
     @Test void retriesPeriodicallyWhenNoResetTimeIsAvailable() {
@@ -86,7 +86,7 @@ class CodexQuotaUtilTest {
         error(MESSAGE + " Please try again at 4:00 PM.");
         limits(Map.of("primary", window(100, NOW.minusSeconds(1))));
         assertEquals(NOW.plusSeconds(300), detect().retryAt());
-        var afterReset = CodexQuotaUtil.detect(temp, STARTED.plusSeconds(5), NOW, ZoneId.of("Europe/Madrid"));
+        var afterReset = GenerationQuotaUtil.detect(temp, STARTED.plusSeconds(5), NOW, ZoneId.of("Europe/Madrid"));
         assertEquals(NOW.plusSeconds(300), afterReset.retryAt());
     }
 }

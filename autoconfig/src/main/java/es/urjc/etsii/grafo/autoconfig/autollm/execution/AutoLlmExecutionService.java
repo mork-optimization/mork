@@ -287,7 +287,7 @@ public final class AutoLlmExecutionService {
             if (name.equals("control/config.json")) {
                 AutoLlmFileUtil.write(target, new AutoLlmConfig(config.project(), config.workspace(), config.trials(), config.seed(), config.maxParameters(),
                         remotePath(config.sotaFile(), root, remote), remotePath(config.initialConfigurationsFile(), root, remote), remotePath(config.trainingPath(), root, remote),
-                        remotePath(config.comparisonPath(), root, remote), config.codex(), config.preparation(), config.tuning(), config.comparison(), config.execution()));
+                        remotePath(config.comparisonPath(), root, remote), config.generation(), config.preparation(), config.tuning(), config.comparison(), config.execution()));
                 files.put(name, target);
             } else if (name.equals("data/staged-inputs.json")) {
                 Map<String,Map<String,String>> manifest = AutoLlmFileUtil.read(entry.getValue(), new TypeReference<>() {});

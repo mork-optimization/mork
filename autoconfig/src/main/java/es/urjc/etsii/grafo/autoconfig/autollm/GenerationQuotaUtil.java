@@ -13,7 +13,7 @@ import java.util.Locale;
 import java.util.regex.Pattern;
 
 /** Explicit Codex usage caps are waits, separate from ordinary process/network failures. */
-public final class CodexQuotaUtil {
+public final class GenerationQuotaUtil {
     private static final Pattern RESET_TIME = Pattern.compile("try again at (\\d{1,2}:\\d{2}\\s*[ap]m)", Pattern.CASE_INSENSITIVE);
     private static final DateTimeFormatter CLOCK_TIME = DateTimeFormatter.ofPattern("h:mm a", Locale.US);
     private static final Duration RETRY_INTERVAL = Duration.ofMinutes(5);
@@ -22,7 +22,7 @@ public final class CodexQuotaUtil {
         public QuotaLimitException(String message, Instant retryAt) { super(message); this.retryAt = retryAt; }
         public Instant retryAt() { return retryAt; }
     }
-    private CodexQuotaUtil() {}
+    private GenerationQuotaUtil() {}
 
     public static QuotaLimitException detect(Path output, Instant startedAt, Instant now, ZoneId zone) {
         JsonNode error = null;
@@ -69,7 +69,7 @@ public final class CodexQuotaUtil {
         var archive = AutoLlmFileUtil.JSON.readTree(read(evidence));
         var latest = new LinkedHashMap<String, JsonNode>();
         for (var conversation : archive.path("conversations")) {
-            if (!conversation.path("threadId").asString("").equals(archive.path("threadId").asString(""))) continue;
+            if (!conversation.path("sessionId").asString("").equals(archive.path("sessionId").asString(""))) continue;
             Path file = AutoLlmFileUtil.inside(output, conversation.path("path").asString());
             try (var reader = AutoLlmEvidenceFiles.reader(file)) {
                 for (String line; (line = reader.readLine()) != null;) {

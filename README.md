@@ -78,7 +78,7 @@ The current development version is a Maven project structured in the following m
 | moocore-java      | Pure Java multi-objective indicators, Pareto operations, EAF ...                                                                      |
 | autoconfig        | Automatic configuration procedures that allow you to easily tune algorithms.                                                          |
 | template          | Base project used by the web generator to create the project zip files.                                                               |
-| example-tsp       | Example project implementation using Mork, the classic Travelling Salesman Problem.                                                   |
+| example-*         | Example implementations using Mork: TSP, TSPTW, VRPOD, BMSSC, MREFLP, facility layouts, graphs, and more.                           |
 | integration-tests | Integration tests used by Mork developers to validate the whole framework interactions and behaviour.                                 |
 
 

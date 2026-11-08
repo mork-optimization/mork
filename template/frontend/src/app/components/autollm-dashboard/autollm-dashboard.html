@@ -94,19 +94,26 @@
                       [value]="config.project.artifact"
                       (change)="update('project.artifact', $event)"
                   /></mat-form-field>
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                    <mat-label>Generation agent</mat-label>
+                    <mat-select [value]="config.generation.agent" (selectionChange)="generationAgent($event.value)">
+                      <mat-option value="CODEX">Codex</mat-option>
+                      <mat-option value="CLAUDE_CODE">Claude Code</mat-option>
+                    </mat-select>
+                  </mat-form-field>
                   <mat-form-field appearance="outline" subscriptSizing="dynamic"
                     ><mat-label>Generation model</mat-label
                     ><input
                       matInput
-                      [value]="config.codex.model ?? ''"
-                      (change)="update('codex.model', $event)"
+                      [value]="config.generation.model ?? ''"
+                      (change)="update('generation.model', $event)"
                   /></mat-form-field>
                   <mat-form-field appearance="outline" subscriptSizing="dynamic"
-                    ><mat-label>Reasoning effort (blank uses Codex default)</mat-label
+                    ><mat-label>Reasoning effort (blank uses agent default)</mat-label
                     ><input
                       matInput
-                      [value]="config.codex.reasoningEffort ?? ''"
-                      (change)="update('codex.reasoningEffort', $event)"
+                      [value]="config.generation.reasoningEffort ?? ''"
+                      (change)="update('generation.reasoningEffort', $event)"
                   /></mat-form-field>
                   <details>
                     <summary>Build and prompt options</summary>
@@ -121,16 +128,16 @@
                       ><mat-label>Custom prompt file (optional)</mat-label
                       ><input
                         matInput
-                        [value]="config.codex.promptFile ?? ''"
-                        (change)="update('codex.promptFile', $event)"
+                        [value]="config.generation.promptFile ?? ''"
+                        (change)="update('generation.promptFile', $event)"
                     /></mat-form-field>
                     <mat-form-field appearance="outline" subscriptSizing="dynamic"
                       ><mat-label>Prompt override (optional)</mat-label
                       ><textarea
                         matInput
                         rows="6"
-                        [value]="config.codex.prompt ?? ''"
-                        (change)="update('codex.prompt', $event)"
+                        [value]="config.generation.prompt ?? ''"
+                        (change)="update('generation.prompt', $event)"
                       ></textarea>
                     </mat-form-field>
                   </details>
@@ -558,13 +565,13 @@
                           (change)="update('preparation.localHeap', $event)"
                       /></mat-form-field>
                       <mat-form-field appearance="outline" subscriptSizing="dynamic"
-                        ><mat-label>Concurrent Codex sessions</mat-label
+                        ><mat-label>Concurrent generation sessions</mat-label
                         ><input
                           matInput
                           type="number"
                           min="1"
-                          [value]="config.codex.maxConcurrentSessions"
-                          (change)="update('codex.maxConcurrentSessions', $event, true)"
+                          [value]="config.generation.maxConcurrentSessions"
+                          (change)="update('generation.maxConcurrentSessions', $event, true)"
                       /></mat-form-field>
                     </div>
                   </details>
@@ -594,7 +601,7 @@
                     <dt>Trials</dt>
                     <dd>{{ config.trials }}</dd>
                     <dt>Generation model</dt>
-                    <dd>{{ config.codex.model || 'Choose a model before approval' }}</dd>
+                    <dd>{{ config.generation.model || 'Choose a model before approval' }}</dd>
                     <dt>Tuning</dt>
                     <dd>
                       {{ config.tuning.evaluations | number }} evaluations per trial ·
@@ -1917,9 +1924,9 @@
               </button>
             </details>
           }
-          @if (campaign.codexUsage; as usage) {
+          @if (campaign.generationUsage; as usage) {
             <p class="codex-usage">
-              Codex token usage · {{ usage.status }} · Input:
+              Generation token usage · {{ usage.status }} · Input:
               {{
                 usage.tokens.inputTokens === null ? 'Unknown' : (usage.tokens.inputTokens | number)
               }}
@@ -1943,7 +1950,7 @@
               }
             </p>
           } @else {
-            <p class="codex-usage">Codex token usage · UNAVAILABLE</p>
+            <p class="codex-usage">Generation token usage · UNAVAILABLE</p>
           }
         </mat-card-content></mat-card
       >
@@ -2530,14 +2537,14 @@
                       View conversation
                     </button>
                   }
-                  @if (attempt.codexEvidence; as evidence) {
+                  @if (attempt.generationEvidence; as evidence) {
                     <span
                       >Conversation: {{ evidence.status }} · Usage:
                       {{ evidence.usage.status }}</span
                     >
-                    @for (conversation of evidence.conversations; track conversation.threadId) {
+                    @for (conversation of evidence.conversations; track conversation.sessionId) {
                       <a [href]="store.artifactUrl(attempt.directory + '/' + conversation.path)"
-                        >Download conversation {{ conversation.threadId }}</a
+                        >Download conversation {{ conversation.sessionId }}</a
                       >
                     }
                   }
@@ -2577,7 +2584,7 @@
               @if (store.generation(); as generation) {
                 <p>
                   Generation: {{ generation.state }} · Session:
-                  {{ generation.threadId || 'Waiting for session event' }} · Last activity:
+                  {{ generation.sessionId || 'Waiting for session event' }} · Last activity:
                   {{
                     generation.lastActivityAt
                       ? (generation.lastActivityAt | date: 'mediumTime')
@@ -2599,7 +2606,7 @@
                 </p>
               }
 
-              @if (trial.codexUsage; as usage) {
+              @if (trial.generationUsage; as usage) {
                 <details>
                   <summary>Trial token usage · {{ label(usage.status) }}</summary>
                   <pre>{{ usage | json }}</pre>

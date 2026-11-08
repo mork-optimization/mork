@@ -27,7 +27,7 @@ class AutoLlmPreparationBudgetTest {
         var defaults = AutoLlmConfig.defaults().preparation();
         assertEquals(600_000L, defaults.probeDurationMillis());
         assertEquals(600_000L, defaults.pilotDurationMillis());
-        assertEquals(2, AutoLlmConfig.defaults().codex().maxConcurrentSessions());
+        assertEquals(2, AutoLlmConfig.defaults().generation().maxConcurrentSessions());
         assertEquals(2, defaults.localBuilds());
         assertEquals(4, defaults.readyQueueSize());
 
@@ -50,7 +50,7 @@ class AutoLlmPreparationBudgetTest {
         var config = new AutoLlmConfig(null, temp.toString(), null, null, null, null, null, null, null,
                 null, new AutoLlmConfig.Preparation(probeMillis, pilotMillis, 0, null, null, null, null), null, null, null);
         var service = new AutoLlmCampaignService(config, new AutoLlmCampaignStore(config), mock(AutoLlmProcessRunner.class),
-                mock(CodexTaskRunner.class), mock(AutoLlmReportService.class), new InstanceConfiguration());
+                mock(GenerationTaskRunner.class), mock(AutoLlmReportService.class), new InstanceConfiguration());
         try {
             assertTrue(service.validate(config).contains("Budgets and repetitions must be positive"));
         } finally {
@@ -136,7 +136,7 @@ class AutoLlmPreparationBudgetTest {
         };
         var context = new AutoLlmExecutionContext(campaign.id, "", root, campaign.prompt);
         context.config = campaign.config; context.baselineCommit = campaign.baselineCommit; context.trial = trial;
-        new AutoLlmTrialRunner(context, root, processes, mock(CodexTaskRunner.class), listener,
+        new AutoLlmTrialRunner(context, root, processes, mock(GenerationTaskRunner.class), listener,
                 () -> false, new Semaphore(1)).execute();
 
         assertEquals("SUCCEEDED", trial.status.name(), trial.failure);

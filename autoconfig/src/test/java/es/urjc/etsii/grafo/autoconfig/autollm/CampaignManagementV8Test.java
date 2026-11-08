@@ -44,7 +44,7 @@ class CampaignManagementV8Test {
                 {"project":{"repository":"%s"},"execution":{"workers":4,"target":"SSH","heap":"2g","ssh":{"servers":[{"id":"a","host":"alias","workspace":"/remote/../opaque"}]}}}
                 """.formatted(repo));
         var explicit = config("""
-                {"project":{"repository":"%s/./"},"codex":{"model":" "},"execution":{"workers":4,"target":"SSH","heap":"2048M","ssh":{"reconnect":{"initialDelayMillis":2000,"maximumDelayMillis":60000,"budgetMillis":1800000},"servers":[{"id":"a","host":"alias","workspace":"/remote/../opaque","workers":4,"heap":"2097152k"}]}}}
+                {"project":{"repository":"%s/./"},"generation":{"model":" "},"execution":{"workers":4,"target":"SSH","heap":"2048M","ssh":{"reconnect":{"initialDelayMillis":2000,"maximumDelayMillis":60000,"budgetMillis":1800000},"servers":[{"id":"a","host":"alias","workspace":"/remote/../opaque","workers":4,"heap":"2097152k"}]}}}
                 """.formatted(repo));
         var a = AutoLlmNormalization.normalize(omitted); var b = AutoLlmNormalization.normalize(explicit);
         assertEquals(a, b); assertEquals(AutoLlmFileUtil.canonicalHash(a), AutoLlmFileUtil.canonicalHash(b));

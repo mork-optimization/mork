@@ -30,10 +30,10 @@ final class AutoLlmReportFixture {
                 if (stage.generation()) {
                     AutoLlmFileUtil.write(root.resolve(a.directory + "/manifest.json"), Map.of("inventory", List.of("One new constructive"), "components", List.of("GreedyNew uses regret"), "metaheuristics", List.of(), "tests", List.of("Feasibility verified"), "limitations", List.of("Expected benefits only"),
                             "generatedComponents", List.of(Map.of("className", "project.GreedyNew", "role", "Constructive", "description", "Regret insertion <script>alert('x')</script>"))));
-                    var tokens = new CodexEvidenceUtil.Tokens(100L, 20L, 0L, 30L, 10L, 130L);
-                    var summary = new CodexEvidenceUtil.Summary("COMPLETE", tokens, 1, 1, 0, 0);
-                    AutoLlmFileUtil.write(root.resolve(a.directory + "/usage.json"), new CodexEvidenceUtil.Usage(summary,
-                            List.of(new CodexEvidenceUtil.Entry("response-"+n,"thread-"+n,"fixture",tokens)), List.of(), List.of(), List.of()));
+                    var tokens = new GenerationEvidence.Tokens(100L, 20L, 0L, 30L, 10L, 130L);
+                    var summary = new GenerationEvidence.Summary("COMPLETE", tokens, 1, 1, 0, 0);
+                    AutoLlmFileUtil.write(root.resolve(a.directory + "/usage.json"), new GenerationEvidence.Usage(summary,
+                            List.of(new GenerationEvidence.Entry("response-"+n,"thread-"+n,"fixture",tokens)), List.of(), List.of(), List.of()));
                 }
             }
             t.winner = Map.of("$component", "SimpleAlgorithm", "constructive", Map.of("$component", "GreedyNew", "alpha", 0.5));
@@ -46,7 +46,7 @@ final class AutoLlmReportFixture {
         for (var event : List.of(Map.of("timestamp", "2026-11-01T00:02:00Z", "stage", "BUILD"), Map.of("timestamp", "2026-11-01T00:02:10Z", "stage", "METADATA")))
             AutoLlmFileUtil.append(root.resolve("campaign-events.jsonl"), Map.of("kind", "preparation-stage", "timestamp", event.get("timestamp"), "detail", Map.of("targetId", "worker", "detail", Map.of("attempt", preparation.directory, "stage", event.get("stage")))));
         AutoLlmFileUtil.write(root.resolve("campaign.json"), c);
-        CodexEvidenceUtil.report(c, root);
+        GenerationEvidence.report(c, root);
         return c;
     }
     /** Varied evidence and more than one dashboard page, for actual browser and print checks. */
@@ -60,10 +60,10 @@ final class AutoLlmReportFixture {
         var retry = chartAttempt(first, 5, AutoLlmCampaign.AttemptStage.PREPARATION, "00:04:00", "00:05:00");
         comparison.number = 6; comparison.startedAt = "2026-11-01T00:06:00Z"; comparison.finishedAt = "2026-11-01T00:06:30Z";
         first.attempts = new ArrayList<>(List.of(generation, nested, preparation, repair, retry, comparison)); first.repairTurns = 1;
-        var previous = AutoLlmFileUtil.read(root.resolve(generation.directory + "/usage.json"), CodexEvidenceUtil.Usage.class);
-        var tokens = new CodexEvidenceUtil.Tokens(200L, 50L, 0L, 70L, 20L, 270L);
-        var entries = new ArrayList<>(previous.entries()); entries.add(new CodexEvidenceUtil.Entry("repair-response", "thread-1", "fixture", tokens));
-        AutoLlmFileUtil.write(root.resolve(repair.directory + "/usage.json"), new CodexEvidenceUtil.Usage(CodexEvidenceUtil.aggregate(entries, 1, 0, 0), entries, List.of(), List.of(), List.of()));
+        var previous = AutoLlmFileUtil.read(root.resolve(generation.directory + "/usage.json"), GenerationEvidence.Usage.class);
+        var tokens = new GenerationEvidence.Tokens(200L, 50L, 0L, 70L, 20L, 270L);
+        var entries = new ArrayList<>(previous.entries()); entries.add(new GenerationEvidence.Entry("repair-response", "thread-1", "fixture", tokens));
+        AutoLlmFileUtil.write(root.resolve(repair.directory + "/usage.json"), new GenerationEvidence.Usage(GenerationEvidence.aggregate(entries, 1, 0, 0), entries, List.of(), List.of(), List.of()));
         c.trials.get(1).attempts.getLast().status = AutoLlmCampaign.AttemptStatus.FAILED;
         c.trials.get(1).problem = new AutoLlmFailureUtil.Failure(AutoLlmFailureUtil.Category.INFRASTRUCTURE, "FIXTURE_CONNECTION", "Fixture: worker disconnected", List.of(), true, "Reconnect");
         c.trials.get(1).infrastructureRetries = 2; c.trials.get(1).connectionRetries.put("comparison-job", 3);
@@ -74,11 +74,11 @@ final class AutoLlmReportFixture {
             var a = chartAttempt(t, 1, AutoLlmCampaign.AttemptStage.GENERATION, "00:00:30", "00:0" + (n % 6 + 1) + ":30");
             a.status = n % 3 == 0 ? AutoLlmCampaign.AttemptStatus.QUOTA_LIMIT : AutoLlmCampaign.AttemptStatus.INTERRUPTED; t.attempts.add(a);
             if (n == 26) { a.finishedAt = null; continue; }
-            var counts = new CodexEvidenceUtil.Tokens(n * 1000L, n * 200L, 0L, n * 130L, n % 2 == 0 ? null : n * 20L, n * 1130L);
-            var rows = List.of(new CodexEvidenceUtil.Entry("response-" + n, "thread-" + n, "fixture", counts));
-            AutoLlmFileUtil.write(root.resolve(a.directory + "/usage.json"), new CodexEvidenceUtil.Usage(CodexEvidenceUtil.aggregate(rows, n % 2, n % 2 == 0 ? 1 : 0, 0), rows, List.of(), List.of(), List.of()));
+            var counts = new GenerationEvidence.Tokens(n * 1000L, n * 200L, 0L, n * 130L, n % 2 == 0 ? null : n * 20L, n * 1130L);
+            var rows = List.of(new GenerationEvidence.Entry("response-" + n, "thread-" + n, "fixture", counts));
+            AutoLlmFileUtil.write(root.resolve(a.directory + "/usage.json"), new GenerationEvidence.Usage(GenerationEvidence.aggregate(rows, n % 2, n % 2 == 0 ? 1 : 0, 0), rows, List.of(), List.of(), List.of()));
         }
-        CodexEvidenceUtil.report(c, root); AutoLlmFileUtil.write(root.resolve("campaign.json"), c); return c;
+        GenerationEvidence.report(c, root); AutoLlmFileUtil.write(root.resolve("campaign.json"), c); return c;
     }
     private static AutoLlmCampaign.Attempt chartAttempt(AutoLlmCampaign.Trial trial, int number, AutoLlmCampaign.AttemptStage stage, String start, String end) {
         var a = new AutoLlmCampaign.Attempt(); a.number = number; a.stage = stage; a.status = AutoLlmCampaign.AttemptStatus.SUCCEEDED;

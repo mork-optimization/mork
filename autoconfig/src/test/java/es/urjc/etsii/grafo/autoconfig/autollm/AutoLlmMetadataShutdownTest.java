@@ -16,7 +16,7 @@ class AutoLlmMetadataShutdownTest {
                 root.toString(), null, null, null, null, null, null, null, null, null, null, null, null);
         var context = new AutoLlmExecutionContext("campaign", "", root, null); context.config = config;
         context.trial = new AutoLlmCampaign.Trial(); context.trial.number = 1;
-        var runner = new AutoLlmTrialRunner(context, root, new AutoLlmProcessRunner(), mock(CodexTaskRunner.class), new AutoLlmTrialRunner.Listener() {
+        var runner = new AutoLlmTrialRunner(context, root, new AutoLlmProcessRunner(), mock(GenerationTaskRunner.class), new AutoLlmTrialRunner.Listener() {
             public void state(AutoLlmExecutionContext.Snapshot snapshot) {}
             public void event(String kind, Object detail) {}
         }, () -> false, new Semaphore(1));

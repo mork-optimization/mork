@@ -31,7 +31,7 @@ class AutoLlmPortableReportTest {
         assertEquals(600000L, r.elapsed()); assertEquals(180000, r.attemptMillis());
         assertEquals(10.0, r.trials().getFirst().comparison().meanImprovementPercent());
         assertTrue(r.trials().get(1).exclusion().contains("FAILED")); assertEquals(2, r.trials().get(1).partial().size());
-        assertEquals(260L, c.codexUsage.tokens().totalTokens());
+        assertEquals(260L, c.generationUsage.tokens().totalTokens());
         var component = r.trials().getFirst().components().getFirst(); assertTrue(component.verified()); assertTrue(component.selected());
         assertEquals(List.of(new AutoLlmPortableReport.Interval("BUILD",10000L), new AutoLlmPortableReport.Interval("METADATA",20000L)), r.trials().getFirst().attempts().get(1).substages());
         assertEquals("cost", AutoLlmPortableReport.selection(c,root,null).objective());
@@ -74,8 +74,8 @@ class AutoLlmPortableReportTest {
         var c = AutoLlmReportFixture.campaign(root); var t = c.trials.getFirst(); Path generation = root.resolve(t.attempts.getFirst().directory);
         Files.delete(generation.resolve("usage.json"));
         AutoLlmFileUtil.write(generation.resolve("manifest.json"),Map.of("components",List.of("GreedyNew: a recorded regret constructor")));
-        CodexEvidenceUtil.report(c,root);
-        var r=report(c); assertEquals("PARTIAL",c.codexUsage.status());
+        GenerationEvidence.report(c,root);
+        var r=report(c); assertEquals("PARTIAL",c.generationUsage.status());
         assertEquals("GreedyNew: a recorded regret constructor",r.trials().getFirst().components().getFirst().description());
         AutoLlmFileUtil.write(generation.resolve("manifest.json"),Map.of("components",List.of("Unrelated notes")));
         assertTrue(report(c).trials().getFirst().components().getFirst().description().contains("unavailable"));

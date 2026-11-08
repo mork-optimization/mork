@@ -16,7 +16,7 @@ class AutoLlmReportLifecycleTest {
         var config=AutoLlmFileUtil.JSON.convertValue(Map.of("workspace",workspace.toString()),AutoLlmConfig.class);
         var store=new AutoLlmCampaignStore(config); String id=UUID.randomUUID().toString(); Path root=store.directory(id);
         var campaign=AutoLlmReportFixture.campaign(root); campaign.id=id; store.save(campaign);
-        var processes=mock(AutoLlmProcessRunner.class); var codex=mock(CodexTaskRunner.class);
+        var processes=mock(AutoLlmProcessRunner.class); var codex=mock(GenerationTaskRunner.class);
         var service=new AutoLlmCampaignService(config,store,processes,codex,mock(AutoLlmReportService.class),mock(InstanceConfiguration.class));
         try {
             org.springframework.test.util.ReflectionTestUtils.setField(service,"current",campaign);
@@ -38,7 +38,7 @@ class AutoLlmReportLifecycleTest {
         var entered=new CountDownLatch(1); var finish=new CountDownLatch(1);
         var exports=mock(AutoLlmReportService.class);
         doAnswer(call->{ entered.countDown(); assertTrue(finish.await(5,TimeUnit.SECONDS)); return null; }).when(exports).report(any(),any());
-        var service=new AutoLlmCampaignService(config,store,mock(AutoLlmProcessRunner.class),mock(CodexTaskRunner.class),exports,mock(InstanceConfiguration.class));
+        var service=new AutoLlmCampaignService(config,store,mock(AutoLlmProcessRunner.class),mock(GenerationTaskRunner.class),exports,mock(InstanceConfiguration.class));
         try {
             var receipt=service.report(id,new AutoLlmPortableReport.Selection("cost",FMode.MINIMIZE));
             assertEquals("QUEUED",receipt.state()); assertTrue(entered.await(5,TimeUnit.SECONDS));

@@ -127,7 +127,7 @@ describe('AutoLLM campaign lifecycle store', () => {
       cleanupApply: vi.fn(),
       proposal: vi.fn().mockResolvedValue({
         digest: 'reviewed',
-        generation: { ready: true },
+        generation: { agent: 'CODEX', ready: true },
         testing: [],
         training: [],
       }),
@@ -251,12 +251,12 @@ describe('AutoLLM campaign lifecycle store', () => {
   it('does not approve a proposal with an unselected generation model', async () => {
     store.proposal.set({
       digest: 'reviewed',
-      generation: { ready: false, approvalLine: 'Set codex.model before approval' },
+      generation: { agent: 'CODEX', ready: false, approvalLine: 'Set generation.model before approval' },
     } as never);
     await store.approveAndStart();
     expect(client.approve).not.toHaveBeenCalled();
     expect(client.action).not.toHaveBeenCalled();
-    expect(store.error()).toContain('Set codex.model');
+    expect(store.error()).toContain('Set generation.model');
   });
   afterEach(() => {
     TestBed.resetTestingModule();
@@ -318,7 +318,7 @@ describe('AutoLLM campaign lifecycle store', () => {
   });
   it('shows approval field differences without starting a changed proposal', async () => {
     store.selectedId.set(campaign.id);
-    store.proposal.set({ digest: 'reviewed', generation: { ready: true } } as never);
+    store.proposal.set({ digest: 'reviewed', generation: { agent: 'CODEX', ready: true } } as never);
     const differences = [{ path: 'configuration.seed', reviewed: 1, current: 2 }];
     client.approve.mockRejectedValue({ error: { message: 'PROPOSAL_CHANGED', differences } });
     await store.approveAndStart();
@@ -758,7 +758,7 @@ describe('AutoLLM campaign lifecycle store', () => {
           ...compact.trials[0],
           winner: { component: 'New' },
           failure: 'saved failure',
-          attempts: [{ ...attempt, codexEvidence: { status: 'ARCHIVED', conversations: [] } }],
+          attempts: [{ ...attempt, generationEvidence: { status: 'ARCHIVED', conversations: [] } }],
         },
       ],
     } as unknown as AutoLlmCampaign;
@@ -772,7 +772,7 @@ describe('AutoLLM campaign lifecycle store', () => {
     await Promise.resolve();
     expect(store.trial()?.winner).toEqual({ component: 'New' });
     await vi.advanceTimersByTimeAsync(2000);
-    expect(store.trial()?.attempts[0].codexEvidence?.status).toBe('ARCHIVED');
+    expect(store.trial()?.attempts[0].generationEvidence?.status).toBe('ARCHIVED');
     expect(client.detail).toHaveBeenCalledTimes(1);
   });
   it('discards full detail and result reads after switching away and back', async () => {

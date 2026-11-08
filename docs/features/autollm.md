@@ -1,6 +1,6 @@
 # AutoLLM campaigns
 
-AutoLLM repeats the component-generation and autoconfig procedure independently. Each trial starts from the same Git commit, opens a new Codex conversation, verifies the proposed components, tunes them with irace, and compares the first-ranked proposal against a fixed SOTA configuration.
+AutoLLM repeats the component-generation and autoconfig procedure independently. Each trial starts from the same Git commit, opens a new generation-agent session, verifies the proposed components, tunes them with irace, and compares the first-ranked proposal against a fixed SOTA configuration.
 
 Start the backend using the example project's application:
 
@@ -10,9 +10,9 @@ java -jar target/project.jar --autollm
 
 Open its usual frontend URL, for example `http://localhost:8080`. AutoLLM binds the server to `127.0.0.1`, keeps it running after a campaign finishes, and provides a separate campaign dashboard. Generation and child processes continue when the browser is closed.
 
-## Configure with Codex
+## Configure with the shared skill
 
-This repository includes the [mork-autollm skill](../../.agents/skills/mork-autollm/SKILL.md). Invoke it in a Codex conversation working in this checkout, for example:
+This repository includes the [mork-autollm skill](../../.agents/skills/mork-autollm/SKILL.md). Invoke it in a Codex or Claude Code conversation working in this checkout, for example:
 
 ```text
 $mork-autollm Configure AutoLLM for example-bmssc with 10 independent trials.
@@ -28,7 +28,7 @@ Use a local Git repository and a committed baseline. Uncommitted changes in the 
 
 The project must have a `SolutionValidator`, a build command that runs its tests, and either a `TimeLimitCalculator` or an explicit positive comparison time limit. Launch the parent using the same example project as the campaign so its objective definitions, instance importer, and Excel customizer match the child results.
 
-Install Git, the project's Java/build tools, R, and the Codex CLI. Configure Codex with the provider and credentials normally used by the CLI. AutoLLM checks the CLI version and lets Codex handle provider authentication during generation; local providers do not require an OpenAI login. R needs `irace`, `httr`, and `jsonlite`; use the setup described in [irace](irace.md). AutoLLM does not install packages during measured work.
+Install Git, the project's Java/build tools, R, and the selected Codex or Claude Code CLI. Configure it with the provider and credentials normally used by the CLI. AutoLLM checks the CLI version and lets the selected CLI handle provider authentication during generation; local providers do not require an OpenAI login. R needs `irace`, `httr`, and `jsonlite`; use the setup described in [irace](irace.md). AutoLLM does not install packages during measured work.
 
 ## Campaign settings
 
@@ -52,7 +52,8 @@ autollm:
   initial-configurations-file: ./autollm/seeds.json
   training-path: ./instances/train.index
   comparison-path: ./instances/test.index
-  codex:
+  generation:
+    agent: CODEX
     executable: codex
     max-concurrent-sessions: 2
     # Optional: prompt-file, prompt, model, reasoning-effort.
@@ -78,7 +79,7 @@ autollm:
     workers: -1
     target: LOCAL
     watchdog-grace-millis: 30000
-    codex-timeout-millis: 3600000
+    generation-timeout-millis: 3600000
     build-timeout-millis: 1800000
     startup-timeout-millis: 300000
     search-space-timeout-millis: 120000
@@ -342,15 +343,15 @@ SSH integration tests create an isolated loopback `sshd` with temporary keys and
 
 ## Trial lifecycle
 
-1. **Generate:** `codex exec --json` works in a fresh clone and returns a structured inventory/component/filter manifest. Shared source instructions are appended to every generation and repair turn, including custom prompts and resumed conversations. They preserve existing code with exceptions for the project's exploration filter and additive model support, described below. All newly discovered algorithm components must end in `New`; utility and supporting classes are exempt.
+1. **Generate:** the selected backend (`codex exec --json` or `claude -p --output-format stream-json`) works in a fresh clone and returns a structured inventory/component/filter manifest. Shared source instructions are appended to every generation and repair turn, including custom prompts and resumed conversations. They preserve existing code with exceptions for the project's exploration filter and additive model support, described below. All newly discovered algorithm components must end in `New`; utility and supporting classes are exempt.
 2. **Prepare:** Mork independently runs the build/tests, checks dependency contents, constructs the actual search space, checks the parameter limit and seed encodings, executes seeds and targeted component probes, and runs a short real autoconfig pilot. Fingerprint version 2 ignores ZIP timestamps/order and only the generated root `builddef.lst` entry in `mork`/`mork-common` dependencies. All class files and other resources remain checked; raw JAR and excluded metadata hashes remain evidence. Mismatches list the exact changed archive entries. Generation/startup and individual evaluations have bounded deadlines and a configured heap.
-3. **Repair or pause:** positively attributed component failures return diagnostics through `codex exec resume <exact-thread-id>`. Up to `max-repairs` completed repair turns are allowed. Infrastructure, integrity and unclassified failures pause in `NEEDS_ATTENTION` without charging component repairs. Transient infrastructure failures allow two retries, retaining each attempt and its diagnostics. A compiler failure naming a changed source can be attributed; a generic failed build or unchanged framework test is not sufficient evidence for component repair.
+3. **Repair or pause:** positively attributed component failures return diagnostics through the selected backend’s exact-session resume command. Up to `max-repairs` completed repair turns are allowed. Infrastructure, integrity and unclassified failures pause in `NEEDS_ATTENTION` without charging component repairs. Transient infrastructure failures allow two retries, retaining each attempt and its diagnostics. A compiler failure naming a changed source can be attributed; a generic failed build or unchanged framework test is not sufficient evidence for component repair.
 
-Explicit Codex usage-limit responses enter `WAITING_FOR_QUOTA` and resume the same conversation automatically. The checkpoint, progress API, operator watch and dashboard expose `quotaRetryAt`. The controller uses exhausted-window reset timestamps from the archived conversation, or the CLI's displayed local reset time, plus two seconds of grace. If neither is available, it checks again after five minutes. Quota waits release the generation slot, consume no component repairs or infrastructure retries, and remain cancellable. A completed component repair is counted once even when interrupted by quota exhaustion. Controller interruption preserves the deadline and pending repair charge; resuming the campaign restores the wait. Authentication, network and unrelated CLI failures retain their existing recovery behavior.
+Explicit agent usage-limit responses enter `WAITING_FOR_QUOTA` and resume the same conversation automatically. The checkpoint, progress API, operator watch and dashboard expose `quotaRetryAt`. The controller uses exhausted-window reset timestamps from the archived conversation, or the CLI's displayed local reset time, plus two seconds of grace. If neither is available, it checks again after five minutes. Claude rate-limit responses also use the five-minute retry interval. Quota waits release the generation slot, consume no component repairs or infrastructure retries, and remain cancellable. A completed component repair is counted once even when interrupted by quota exhaustion. Controller interruption preserves the deadline and pending repair charge; resuming the campaign restores the wait. Authentication, network and unrelated CLI failures retain their existing recovery behavior.
 
 Explicit model-capacity errors enter `WAITING_FOR_CAPACITY`, keeping the model and conversation unchanged. The checkpoint, progress API, operator and dashboard expose `capacityWait` with the first failure, retry count, diagnostic, next retry and deadline. Delays use equal jitter: 15–30 seconds initially, doubling to a 150–300 second range. The one-hour deadline survives controller restarts. Expiry pauses the trial with `CODEX_CAPACITY_EXHAUSTED`; explicit recovery starts a new budget while preserving prior attempts. Waiting releases the generation slot, remains cancellable and consumes neither component repairs nor infrastructure retries. An error before a conversation exists retries initiation; otherwise retries resume the exact conversation. Evidence-archive failures still block as integrity errors. No fallback models are selected automatically.
 
-Campaign approval requires an explicit `codex.model`; Mork does not choose a default model for the user. Draft creation, screening and baseline preparation may leave it unset. The proposal’s `generation` section and the dashboard/helper approval view show the model for generation and repairs, reasoning effort, provider policy and the absence of automatic model fallback. Blank reasoning effort is clearly labeled as an unpinned Codex default. Provider selection comes from Codex configuration on initial launch; resumed sessions retain their observed provider. Set `codex.reasoningEffort` too when a pinned effort is required. Model and reasoning settings are part of the reviewed digest, so changing either requires renewed approval. Approval and launch reject a missing model even through direct API calls.
+Campaign approval requires an explicit `generation.model`; Mork does not choose a default model for the user. Draft creation, screening and baseline preparation may leave it unset. The proposal’s `generation` section and the dashboard/helper approval view show the model for generation and repairs, reasoning effort, provider policy and the absence of automatic model fallback. Blank reasoning effort is clearly labeled as an unpinned agent default. Provider selection comes from the selected CLI configuration on initial launch; resumed sessions retain their observed provider. Set `generation.reasoningEffort` too when a pinned effort is required. Model and reasoning settings are part of the reviewed digest, so changing either requires renewed approval. Approval and launch reject a missing model even through direct API calls.
 
 Each generation attempt retains `model-selection.json` with the requested model, launch selection and observed model/provider from the exact archived session. Missing observations remain explicitly unavailable or partial. When the model was implicit, resuming a known conversation supplies its observed model and provider instead of reselecting from changing defaults. These details are also available in trial progress and the dashboard.
 4. **Tune:** a verified component set, search space, and JAR are frozen. Main tuning starts in a fresh directory with the original seeds and the fixed evaluation budget. Pilot elites and racing state are not reused.
@@ -387,7 +388,7 @@ The baseline response separates `withinLimit` (all target parameter counts are k
 
 Campaign, target, trial, attempt, screening, preflight, and remote-job lifecycle states use typed enums. New checkpoints add LOCAL_PREPARATION and WAITING_FOR_TARGET states. Campaign resume requests use the same eligibility rules exposed by the recovery API: pending cancellation blocks resume until reconciliation finishes, and a stopped campaign waiting for a remote job remains resumable. Trial requeueing preserves its assignment and seeds; completed trials stay terminal.
 
-Qualification captures execution-host prerequisites once. Baseline preparation reuses their structured results for version provenance, including R runtime/package versions, while checking the Codex version on the controller. Build-wrapper validation still happens after staging the actual source, and independent baseline reproducibility builds remain required.
+Qualification captures execution-host prerequisites once. Baseline preparation reuses their structured results for version provenance, including R runtime/package versions, while checking the generation CLI version on the controller. Build-wrapper validation still happens after staging the actual source, and independent baseline reproducibility builds remain required.
 
 Runner state contains one execution context and one trial. Stage outputs are committed under `outputs`, keyed by `GENERATION`, `PREPARATION`, `TUNING`, `WINNER_EXPORT`, and `COMPARISON`; `nextStage` determines the remaining work. All evidence paths use the same campaign-relative namespace, including the target prefix.
 
@@ -401,7 +402,7 @@ Cancel stops owned processes and confirms remote evidence collection. Resume pre
 
 The campaign dashboard's **Portable campaign report** section generates and downloads `reports/report.html`. It is a self-contained HTML document that opens without a running backend or external assets. Use the browser's Print command to save a PDF; the print layout includes every trial and attempt.
 
-Reports are generated automatically as trials settle and when a campaign finishes, is cancelled, or is interrupted. **Generate/Regenerate report** also works during an active campaign and labels unfinished results as a partial snapshot. Reporting reads saved local evidence, including compacted journals, without contacting workers, loading generated classes, rebuilding executables, invoking Codex, or repeating experiments. Legacy checkpoint formats still require their original controller.
+Reports are generated automatically as trials settle and when a campaign finishes, is cancelled, or is interrupted. **Generate/Regenerate report** also works during an active campaign and labels unfinished results as a partial snapshot. Reporting reads saved local evidence, including compacted journals, without contacting workers, loading generated classes, rebuilding executables, invoking a generation agent, or repeating experiments. Legacy checkpoint formats still require their original controller.
 
 The report includes campaign status counts, recorded execution duration, dataset sizes, hosts and budgets; a trial summary table with gap, wins/ties/losses, generated component names and the irace winner approach; and trial details with the winner specification, generated-component descriptions, stage/attempt timings, preparation substages, partial results and failure evidence. Generation/repair details include token counts and completeness. Aggregate usage deduplicates response identities; cached input and reasoning output are already included in input/output totals. Missing evidence remains unavailable, never zero.
 
@@ -437,7 +438,7 @@ For browser/print regression checks, run `AutoLlmPortableReportIT` through Maven
 
 ## Saved evidence
 
-Each UUID directory contains `campaign.json`, append-only campaign events, frozen control files and instance manifests, a revisioned target pool and immutable trial assignments. `targets/<id>/` contains isolated controls, transfers, metadata and baseline evidence; trials use their recorded campaign-relative `directory`. Trial evidence retains a frozen commit-plus-patch source snapshot (source ZIP for legacy campaigns) and hashes, Codex prompts/events/usage/manifest/session ID, build logs, seed/component probes, pilot and main evaluation journals, all encountered configurations, elite history, final elites, irace R data, winner specifications, and comparison output. Completed checkouts may be retired and closed text evidence compressed as described above; their logical evidence remains recoverable.
+Each UUID directory contains `campaign.json`, append-only campaign events, frozen control files and instance manifests, a revisioned target pool and immutable trial assignments. `targets/<id>/` contains isolated controls, transfers, metadata and baseline evidence; trials use their recorded campaign-relative `directory`. Trial evidence retains a frozen commit-plus-patch source snapshot (source ZIP for legacy campaigns) and hashes, generation prompts/events/usage/manifest/session ID, build logs, seed/component probes, pilot and main evaluation journals, all encountered configurations, elite history, final elites, irace R data, winner specifications, and comparison output. Completed checkouts may be retired and closed text evidence compressed as described above; their logical evidence remains recoverable.
 
 After a workload finishes, its default `solutions/` exports are retained in one `solutions.zip`. Every member is checksum-verified before loose exports are removed. Control files and workbooks remain loose; journals remain readable through the logical evidence APIs even after compression, so reporting and recovery do not require extracting tours. New SSH runners compact exports before transfer; local collection also compacts loose exports returned by older runners. Archives contain the original files and a `.mork-transfer.json` manifest with content hashes, permissions and symlink metadata. A retry verifies an existing archive and any remaining loose files before completing cleanup; conflicting or corrupt archives leave the loose files intact.
 
@@ -501,3 +502,45 @@ All paths below are relative to `/api/autollm`; endpoints are registered when th
 Failed builds record bounded execution-host compiler, test, dependency or unknown diagnostics before collection/cleanup, with source/report locations. Recognizing a failing baseline test does not establish generated-component causation; attribution remains unknown without stronger evidence.
 
 Response-producing helper commands accept `--output FILE` (`--response-output` when `--output` already names an artifact destination). Large JSON retrievals stream into a temporary file and atomically replace the destination only after success; stdout contains a concise file receipt. Watch output uses newline-delimited JSON with `--json`, otherwise readable lines; log output preserves its documented text/JSON rendering. Interrupted writes preserve the previous destination. `status --screening ID` selects screening explicitly; campaign and screening selectors are mutually exclusive.
+
+
+### Generation agents: Codex and Claude Code
+
+The campaign controller runs generation locally through one of two CLI backends.
+Builds, metadata checks, repairs, tuning, worker assignment and reporting use the same
+workflow for both agents. Remote workers do not need either CLI or its credentials.
+
+The canonical skill is `.agents/skills/mork-autollm`; `.claude/skills/mork-autollm`
+is a relative symlink to it. Invoke `/mork-autollm` in Claude Code. When preparing a
+new configuration, the skill passes `config --agent CLAUDE_CODE` or `--agent CODEX`
+according to its host. Explicit overrides take precedence. Opening an existing
+campaign from a different agent does not change the campaign's generation backend.
+
+Use `generation.agent` (`CODEX` or `CLAUDE_CODE`), `generation.executable`,
+`generation.model`, `generation.reasoningEffort`, and
+`generation.maxConcurrentSessions`. The default backend is Codex; Claude defaults
+to executable `claude`. Select a model explicitly before reviewing the proposal.
+Agent, model and effort changes require a revised proposal and approval. There is
+no automatic model or agent fallback. `execution.generationTimeoutMillis` controls
+the hard deadline for each generation attempt.
+
+Claude uses the existing CLI login and honors `CLAUDE_CONFIG_DIR` when configured.
+Run `claude auth status` to check authentication and `claude /login` to sign in.
+Generation uses print mode, streamed JSON and a structured manifest. Source edits
+use `acceptEdits`; Bash sandboxing is enabled without unsandboxed escape commands.
+The installed CLI and platform must support these features. Authentication or
+permission failures remain visible in attempt diagnostics.
+
+Repairs resume the exact saved session. Recovery can collect a completed attempt
+without generating again. Native transcripts are archived with identity and checksum
+verification; unrelated sessions and credentials are excluded. Usage is deduplicated
+by native response ID across attempts. Unavailable counters remain unknown; Claude's
+cost field is a CLI estimate rather than a billing record.
+
+This configuration uses checkpoint schema 9. Old `codex` configuration keys are not
+aliases: update configuration files and use the matching controller for historical
+campaigns. Remote execution continues to use runner protocol 8.
+
+An opt-in live test is available with `-Dtest=ClaudeCodeLiveIT
+-Dmork.claude.liveModel=<explicit-model-id>`. It uses the existing login and may
+consume account usage. Normal tests use local CLI fixtures and make no model calls.

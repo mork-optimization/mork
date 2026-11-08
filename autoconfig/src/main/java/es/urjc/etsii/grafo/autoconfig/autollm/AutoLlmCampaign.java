@@ -8,7 +8,7 @@ import java.util.Map;
 
 /** Versioned JSON checkpoint. Mutations are serialized by the campaign service/store. */
 public class AutoLlmCampaign {
-    public static final int SCHEMA_VERSION = 8;
+    public static final int SCHEMA_VERSION = 9;
     public enum CampaignStatus {
         DRAFT, RUNNING, WAITING_FOR_REMOTE, WAITING_FOR_TARGETS, CANCELLATION_PENDING,
         INTERRUPTED, NEEDS_ATTENTION, CANCELLED, SUCCEEDED, COMPLETED_WITH_FAILURES;
@@ -60,7 +60,7 @@ public class AutoLlmCampaign {
     public Map<String,Object> remote;
     public String prompt;
     public Map<String, String> versions = Map.of();
-    public CodexEvidenceUtil.Summary codexUsage;
+    public GenerationEvidence.Summary generationUsage;
     public TargetState localPreparation = new TargetState();
     public long poolRevision;
     public Map<String, TargetState> targets = new java.util.LinkedHashMap<>();
@@ -88,7 +88,7 @@ public class AutoLlmCampaign {
         result.remote = remote == null ? null : new java.util.LinkedHashMap<>(remote);
         result.prompt = this.prompt;
         result.versions = this.versions;
-        result.codexUsage = this.codexUsage;
+        result.generationUsage = this.generationUsage;
         result.localPreparation = this.localPreparation.copy();
         result.poolRevision = this.poolRevision;
         for (var entry : targets.entrySet()) result.targets.put(entry.getKey(), entry.getValue().copy());
@@ -102,7 +102,7 @@ public class AutoLlmCampaign {
         for (var target : result.targets.values()) target.resolvedConfig = null;
         for (var trial : result.trials) {
             trial.winner = null; trial.blacklist = null; trial.failure = null;
-            for (var attempt : trial.attempts) { attempt.failure = null; attempt.codexEvidence = null; }
+            for (var attempt : trial.attempts) { attempt.failure = null; attempt.generationEvidence = null; }
         }
         return result;
     }
@@ -189,17 +189,17 @@ public class AutoLlmCampaign {
         public AutoLlmFailureUtil.Failure problem;
         public int infrastructureRetries;
         public Map<String,Integer> connectionRetries = new java.util.LinkedHashMap<>();
-        public String threadId;
+        public String sessionId;
         public String blacklist;
         public Stage nextStage = Stage.GENERATION;
         public Map<Stage, StageOutput> outputs = new java.util.EnumMap<>(Stage.class);
         public boolean resumeTurn;
         public String quotaRetryAt;
-        public CodexCapacityUtil.Wait capacityWait;
+        public GenerationCapacityUtil.Wait capacityWait;
         public boolean repairPending;
         public int repairTurns;
         public Object winner;
-        public CodexEvidenceUtil.Summary codexUsage;
+        public GenerationEvidence.Summary generationUsage;
         public List<Attempt> attempts = new ArrayList<>();
         public String outputDirectory(Stage stage) { var output = outputs.get(stage); return output == null ? null : output.directory(); }
         public String latestDirectory(Stage stage) {
@@ -233,7 +233,7 @@ public class AutoLlmCampaign {
             result.problem = this.problem;
             result.infrastructureRetries = this.infrastructureRetries;
             result.connectionRetries.putAll(connectionRetries);
-            result.threadId = this.threadId;
+            result.sessionId = this.sessionId;
             result.blacklist = this.blacklist;
             result.nextStage = this.nextStage;
             result.outputs.putAll(outputs);
@@ -243,7 +243,7 @@ public class AutoLlmCampaign {
             result.repairPending = this.repairPending;
             result.repairTurns = this.repairTurns;
             result.winner = this.winner;
-            result.codexUsage = this.codexUsage;
+            result.generationUsage = this.generationUsage;
             for (var attempt : attempts) result.attempts.add(attempt.copy());
             return result;
         }
@@ -259,7 +259,7 @@ public class AutoLlmCampaign {
         public String failure;
         public AutoLlmFailureUtil.Failure problem;
         public PreparationStage substage;
-        public CodexEvidenceUtil.Evidence codexEvidence;
+        public GenerationEvidence.Evidence generationEvidence;
 
         public Attempt copy() {
             var result = new Attempt();
@@ -273,7 +273,7 @@ public class AutoLlmCampaign {
             result.failure = this.failure;
             result.problem = this.problem;
             result.substage = this.substage;
-            result.codexEvidence = this.codexEvidence;
+            result.generationEvidence = this.generationEvidence;
             return result;
         }
     }
