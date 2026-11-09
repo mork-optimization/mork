@@ -1,0 +1,54 @@
+<section class="route-view" aria-label="Travelling salesman solution">
+  <div class="route-heading">
+    <div>
+      <p class="eyebrow">Travelling salesman problem</p>
+      <h3>{{ result().instanceName }} · {{ result().algorithmName }}</h3>
+    </div>
+    <div class="score">
+      <span>{{ selectedObjective() ?? 'Objective' }}</span>
+      <strong>{{ score() }}</strong>
+    </div>
+  </div>
+  @if (drawing(); as route) {
+    <p class="caption">{{ route.cities.length }} cities · Closed tour · Seed {{ result().seed }}</p>
+    <svg
+      viewBox="0 0 800 500"
+      role="img"
+      [attr.aria-label]="
+        'Tour visiting ' + route.cities.length + ' cities in ' + result().instanceName
+      "
+    >
+      <title>Travelling salesman route for {{ result().instanceName }}</title>
+      <desc>
+        The tour follows the supplied city coordinates and returns to the first city. Visit order is
+        available below.
+      </desc>
+      <polyline class="route" [attr.points]="route.points" />
+      @for (city of route.cities; track $index) {
+        <circle class="city" [attr.cx]="city.x" [attr.cy]="city.y" r="4">
+          <title>City {{ $index + 1 }}</title>
+        </circle>
+      }
+      <circle
+        class="start"
+        [attr.cx]="route.cities[route.tour[0]].x"
+        [attr.cy]="route.cities[route.tour[0]].y"
+        r="8"
+      >
+        <title>First city in the stored tour: {{ route.tour[0] + 1 }}</title>
+      </circle>
+    </svg>
+    <p class="caption">
+      The outlined marker identifies the first city. Coordinates retain their aspect ratio.
+    </p>
+    <details>
+      <summary>Visit order · city numbers start at 1</summary>
+      <p class="visit-order">{{ routeLabel() }}</p>
+    </details>
+  } @else {
+    <p role="status">
+      This route cannot be displayed: its coordinates, visit order, or payload version are invalid.
+      Result metadata remains available above.
+    </p>
+  }
+</section>

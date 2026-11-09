@@ -1,0 +1,89 @@
+:host {
+  display: block;
+}
+.route-view {
+  margin-top: 1.5rem;
+  padding: 1.25rem;
+  border: 1px solid #cad5e2;
+  border-radius: 12px;
+  background: #f7faff;
+  color: #20334b;
+}
+.route-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 1rem;
+}
+.eyebrow {
+  margin: 0 0 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #48617f;
+}
+h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  overflow-wrap: anywhere;
+}
+.score {
+  text-align: right;
+  flex-shrink: 0;
+}
+.score span {
+  display: block;
+  font-size: 0.8rem;
+}
+.score strong {
+  display: block;
+  font-size: 1.5rem;
+  color: #164c8c;
+}
+svg {
+  display: block;
+  width: 100%;
+  max-height: 500px;
+  background: white;
+  border-radius: 8px;
+}
+.route {
+  fill: none;
+  stroke: #2162a6;
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+.city {
+  fill: #164c8c;
+  stroke: white;
+  stroke-width: 1;
+}
+.start {
+  fill: none;
+  stroke: #a54215;
+  stroke-width: 2.5;
+}
+.caption {
+  font-size: 0.85rem;
+  color: #48617f;
+}
+summary {
+  cursor: pointer;
+  padding: 0.5rem 0;
+}
+.visit-order {
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 42rem) {
+  .route-view {
+    padding: 0.75rem;
+  }
+  .route-heading {
+    flex-direction: column;
+  }
+  .score {
+    text-align: left;
+  }
+}
